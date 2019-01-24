@@ -10,6 +10,9 @@ from jupyter_client import find_connection_file
 from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
 from ipython_genutils.path import filefind
 import site
+from search import search_tables
+
+
 
 class HelloWorldHandler(IPythonHandler):
 
@@ -20,6 +23,7 @@ class HelloWorldHandler(IPythonHandler):
 
         msg_id = subprocess.Popen(['python', file_name, kernel_id, self.search_var],
                                   stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+
         output, error = msg_id.communicate()
 
         if sys.version[0] == '3':
@@ -43,17 +47,15 @@ class HelloWorldHandler(IPythonHandler):
 
     def get(self):
         self.data = self.request.arguments
-        #print(self.data)
-        self.fetch_kernel_id()
         self.fetch_search_var()
-        #print(self.kernel_id)
-        #print(self.search_var)
+        self.fetch_kernel_id()
         success, output = self.print_variable_value()
+
         if success == True:
-            #print(output)
-            self.data_trans = {'res':str(output), 'state':str('true')}
+
+            data_json = search_tables()
+            self.data_trans = {'res': data_json, 'state':str('true')}
             self.write(json.dumps(self.data_trans))
-            #self.render('/searchvariable', data=string_data)
         else:
             self.data_trans = {'res':str(""), 'state':str('false')}
             self.write(json.dumps(self.data_trans))
@@ -68,6 +70,6 @@ def load_jupyter_server_extension(nb_server_app):
     nb_server_app.log.info("Hello World!")
     web_app = nb_server_app.web_app
     host_pattern = '.*$'
-    route_pattern = url_path_join(web_app.settings['base_url'], r'/queryvariable')
+    route_pattern = url_path_join(web_app.settings['base_url'], r'/stable')
     web_app.add_handlers(host_pattern, [(route_pattern, HelloWorldHandler)])
     nb_server_app.log.info("Data Extension Loaded!")
