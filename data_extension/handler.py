@@ -43,22 +43,33 @@ class HelloWorldHandler(IPythonHandler):
         self.kernel_id = str(self.data['kid'][0])
 
     def fetch_search_var(self):
-        self.search_var = self.data['var'][0]
+        self.search_var = str(self.data['var'][0])[2:-1]
+
+    def fetch_search_mode(self):
+        self.mode = int(self.data['mode'][0])
+
 
     def get(self):
         self.data = self.request.arguments
         self.fetch_search_var()
         self.fetch_kernel_id()
-        success, output = self.print_variable_value()
+        self.fetch_search_mode()
+        print(self.search_var)
+        print(self.mode)
 
-        if success == True:
-
-            data_json = search_tables()
-            self.data_trans = {'res': data_json, 'state':str('true')}
+        if self.mode == 0:
+            output = search_tables(self.search_var, self.mode)
+            self.data_trans = {'res': output, 'state': str('true')}
             self.write(json.dumps(self.data_trans))
         else:
-            self.data_trans = {'res':str(""), 'state':str('false')}
-            self.write(json.dumps(self.data_trans))
+            success, output = self.print_variable_value()
+            if success == True:
+                data_json = search_tables(self.search_var, self.mode)
+                self.data_trans = {'res': data_json, 'state':str('true')}
+                self.write(json.dumps(self.data_trans))
+            else:
+                self.data_trans = {'res':str(""), 'state':str('false')}
+                self.write(json.dumps(self.data_trans))
 
 def load_jupyter_server_extension(nb_server_app):
     """

@@ -4,6 +4,7 @@ define([
     'base/js/namespace',
     'base/js/events',
     'notebook/js/codecell',
+    'notebook/js/notebook',
     'base/js/utils',
 ], function(
     requirejs,
@@ -11,6 +12,7 @@ define([
     Jupyter,
     events,
     codecell,
+    nb,
     utils
 ) {
     "use strict";
@@ -45,7 +47,32 @@ define([
         'types_to_exclude': ['module', 'function', 'builtin_function_or_method', 'instance', '_Feature']
     }
 
+    function execute_code(code, cell) {
+        if (!cell.kernel) {
+            console.log(i18n.msg._("Can't execute cell since kernel is not set."));
+            return;
+        }
 
+        cell.clear_output(false, true);
+        var old_msg_id = cell.last_msg_id;
+        cell.set_input_prompt('*');
+        cell.element.addClass("running");
+        var callbacks = cell.get_callbacks();
+
+        cell.last_msg_id = cell.kernel.execute(code, callbacks, {silent: false, store_history: true});
+        cell.render();
+        cell.events.trigger('execute.CodeCell', {cell: this});
+        var that = cell;
+        function handleFinished(evt, data) {
+            if (that.kernel.id === data.kernel.id && that.last_msg_id === data.msg_id) {
+                    that.events.trigger('finished_execute.CodeCell', {cell: that});
+                that.events.off('finished_iopub.Kernel', handleFinished);
+              }
+        }
+        cell.events.on('finished_iopub.Kernel', handleFinished);
+        cell.set_text("#Tabled Imported");
+
+    };
 
     //.....................global variables....
 
@@ -61,7 +88,7 @@ define([
         config.loaded.then(function() {
             // config may be specified at system level or at document level.
             // first, update defaults with config loaded from server
-            cfg = $.extend(true, cfg, config.data.varInspector);
+            cfg = $.extend(true, cfg, config.data[name]);
             // then update cfg with some vars found in current notebook metadata
             // and save in nb metadata (then can be modified per document)
 
@@ -75,12 +102,12 @@ define([
             cfg, Jupyter.notebook.metadata[name]);
 
             // but cols and kernels_config are taken from system (if defined)
-            if (config.data.varInspector) {
-                if (config.data.varInspector.cols) {
-                    cfg.cols = $.extend(true, cfg.cols, config.data.varInspector.cols);  
+            if (config.data[name]) {
+                if (config.data[name].cols) {
+                    cfg.cols = $.extend(true, cfg.cols, config.data[name].cols);
                 }
-                if (config.data.varInspector.kernels_config) {
-                    cfg.kernels_config = $.extend(true, cfg.kernels_config, config.data.varInspector.kernels_config);  
+                if (config.data[name].kernels_config) {
+                    cfg.kernels_config = $.extend(true, cfg.kernels_config, config.data[name].kernels_config);
                 }
             }
 
@@ -121,6 +148,8 @@ define([
         link.type = "text/css";
         link.rel = "stylesheet";
         link.href = requirejs.toUrl("./main.css");
+        console.log('css');
+        console.log(link);
         document.getElementsByTagName("head")[0].appendChild(link);
     };
 
@@ -142,7 +171,7 @@ function html_table(jsonVars) {
         has_shape = true;
     }
     var beg_table = '<div class=\"inspector\"><table class=\"table fixed table-condensed table-nonfluid \"><col /> \
- <col  /><col /><thead><tr><th >X</th><th >Name</th><th >Type</th><th >Size</th>' + shape_str + '<th >Value</th><th>Search</th></tr></thead><tr><td> \
+ <col  /><col /><thead><tr><th >Name</th><th >Type</th><th >Size</th>' + shape_str + '<th >Value</th><th>Search</th></tr></thead><tr><td> \
  </td></tr>';
     varList.forEach(listVar => {
         var shape_col_str = '</td><td>';
@@ -152,10 +181,7 @@ function html_table(jsonVars) {
         //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
         //var jstr = listVar.varContent;
         beg_table +=
-            '<tr><td><a href=\"#\" onClick=\"Jupyter.notebook.kernel.execute(\'' +
-            kernel_config.delete_cmd_prefix + listVar.varName + kernel_config.delete_cmd_postfix + '\'' + '); ' +
-            'Jupyter.notebook.events.trigger(\'varRefresh\'); \">x</a></td>' +
-            '<td>' + _trunc(listVar.varName, cfg.cols.lenName) + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
+            '<tr><td>' + _trunc(listVar.varName, cfg.cols.lenName) + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
             '</td><td>' + listVar.varSize + shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
             '</td><td><button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \">s</button>' +
             '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \">l</button>' +
@@ -194,7 +220,7 @@ function html_data_table(jsonVars, mode) {
     }
 
     beg_table += '<div class=\"inspector\"><table class=\"table fixed table-condensed table-nonfluid \"><col /> \
- <col  /><col /><thead><tr><th>Rank</th><th >Name</th><th >Type</th><th >Size</th>' + shape_str + '<th >Value</th><th>Operation</th></tr></thead><tr><td> \
+ <col  /><col /><thead><tr><th>Rank</th><th >Name</th>' + shape_str + '<th >Value</th><th>Operation</th></tr></thead><tr><td> \
  </td></tr>';
     var count = 0
     varList.forEach(listVar => {
@@ -205,10 +231,11 @@ function html_data_table(jsonVars, mode) {
         //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
         //var jstr = listVar.varContent;
         count += 1;
+        //var table_string = jstr.replace('\'', '\"');
         beg_table +=
-            '<tr><td>' + String(count) + '</td><td>' + _trunc(listVar.varName, cfg.cols.lenName) + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
-            '</td><td>' + listVar.varSize + shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
-            '</td><td><button onClick = \"Jupyter.notebook.events.trigger(\'importtable\', {value : \'' + String(listVar.varName) + '\'}) \">i</button></td>' +
+            '<tr><td>' + String(count) + '</td><td>' + _trunc(listVar.varName, cfg.cols.lenName) + '</td>' +
+            '<td>' + listVar.varContent +
+            '</td> <td><button onClick = \"Jupyter.notebook.events.trigger(\'importtable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:0}) \">import</button></td>' +
             '</tr>';
     });
     var full_table = beg_table + '</table></div>';
@@ -250,10 +277,7 @@ function html_data_table(jsonVars, mode) {
     }
 
     function searchTable(evt, data){
-        console.log('search function');
-        console.log(data.var_name);
         var mode = data.mode;
-        console.log(mode);
         var var_value = data.var_name;
         var kid = data.kid;
         var data_json = {'var': var_value, 'kid':kid, 'mode': mode};
@@ -274,8 +298,13 @@ function html_data_table(jsonVars, mode) {
                 console.log(return_state);
                 if(return_state === 'true'){
                     var print_string = return_data.toString();
-                    console.log(print_string);
                     search_inspector(cfg, st, mode);
+
+                    requirejs(['nbextensions/varInspector/jquery.tablesorter.min'],
+                        function() {
+                    setTimeout(function() { if ($('#searchResults' + String(mode)).length>0)
+                        $('#searchResults' + String(mode) + ' table').tablesorter()}, 50)
+                    });
                     console.log('#searchResults' + String(mode));
                     $('#searchResults' + String(mode)).html(html_data_table(print_string, mode));
                 }
@@ -289,9 +318,44 @@ function html_data_table(jsonVars, mode) {
     }
 
     function importtable(evt, data){
-        var df_string = data.value;
-        var cell = Jupyter.notebook.insert_cell_below('code');
-        cell.execute('x = 1\nprint(x)\n');
+        var var_name = data.var_name;
+        var kid = data.kid;
+        var mode = data.mode;
+        var data_json = {'var': var_name, 'kid':kid, 'mode': mode};
+
+        var send_url = utils.url_path_join(Jupyter.notebook.base_url, '/stable');
+        var return_data = ""
+        var return_state = ""
+
+        $.ajax({
+            url: send_url,
+            type: 'GET',
+            data: data_json,
+            dataType: 'json',
+            success : function (response) {
+                return_state = response['state'];
+                return_data = response['res'];
+                console.log(return_data);
+                console.log(return_state);
+                if(return_state === 'true'){
+                    var print_string = return_data.toString();
+                    console.log(print_string);
+                    var cell = Jupyter.notebook.insert_cell_below('code');
+                    cell.set_text("#Import New Table");
+                    cell.render();
+                    var rcell = Jupyter.notebook.insert_cell_below('code');
+                    var running_code = 'from sqlalchemy import create_engine\nuser_name = \'yizhang\'\npassword = \'yizhang\'\ndbname = \'joinstore\'\n' +
+                        'def connect2db():\n\tengine = create_engine(\'postgresql://\' + user_name + \':\' + password + \'@localhost/\' + dbname)\n\treturn engine.connect()';
+                    execute_code(running_code, rcell);
+                    cell.set_text('eng = connect2db()\ndf_new = pd.read_sql_table(\'' + var_name + '\', eng)\nprint(df_new)');
+                }
+                else{
+                    var print_string = 'print(\'the search variable is not in this cell!\')';
+                    console.log(print_string);
+                }
+            },
+            error : utils.log_ajax_error
+        });
     }
 
     var varInspector_init = function() {
@@ -362,7 +426,7 @@ function html_data_table(jsonVars, mode) {
     }
 
     var create_varInspector_div = function(cfg, st) {
-        create_named_div('varInspector', 'Variable Inspector', cfg, st);
+        create_named_div('varInspector', 'List All Tables (DataFrame/Array)', cfg, st);
     }
 
     var create_named_div = function(name, title, cfg, st) {

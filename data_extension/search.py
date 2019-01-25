@@ -38,13 +38,17 @@ def __fetch_all_views(eng):
     return views_dict
 
 
-def search_tables():
+def search_tables(varname, mode):
     eng = __connect2db('joinstore')
-    tables = __fetch_all_views(eng)
-    tables_name = list(tables.keys())
-    random.shuffle(tables_name)
-    tables_name = tables_name[:10]
-    vardic = [{'varName': v, 'varType': type(tables[v]).__name__, 'varSize': str(tables[v].size), 'varContent': tables[v].to_string()[:200]} for v in tables_name] # noqa
-    return json.dumps(vardic)
+    if mode == 0:
+        table = pd.read_sql_table(varname, eng)
+        return table.to_html()
+    else:
+        tables = __fetch_all_views(eng)
+        tables_name = list(tables.keys())
+        random.shuffle(tables_name)
+        tables_name = tables_name[:5]
+        vardic = [{'varName': v, 'varType': type(tables[v]).__name__, 'varSize': str(tables[v].size), 'varContent': tables[v].to_html(index_names = False, justify = 'center', max_rows = 5, max_cols = 5, header = False)} for v in tables_name] # noqa
+        return json.dumps(vardic)
 
 #print(search_tables())
