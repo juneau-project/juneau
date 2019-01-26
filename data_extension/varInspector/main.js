@@ -124,8 +124,9 @@ define([
         toggle_varInspector(cfg, st)
     }
 
-    function toggleSearch(){
-        toggle_search(cfg, st)
+    function toggleSearch(data){
+        console.log(data);
+        toggle_search(data.vname, cfg, st)
     }
     var varInspector_button = function() {
         if (!Jupyter.toolbar) {
@@ -260,9 +261,9 @@ function html_data_table(jsonVars, mode) {
         });
     }
 
-    function tableSort() {
+    function tableSort(name) {
         requirejs(['nbextensions/varInspector/jquery.tablesorter.min'])
-        $('#varInspector table').tablesorter()
+        $('#var' + name + ' table').tablesorter()
     }
 
     var varRefresh = function() {
@@ -294,8 +295,6 @@ function html_data_table(jsonVars, mode) {
             success : function (response) {
                 return_state = response['state'];
                 return_data = response['res'];
-                console.log(return_data);
-                console.log(return_state);
                 if(return_state === 'true'){
                     var print_string = return_data.toString();
                     search_inspector(cfg, st, mode);
@@ -309,7 +308,7 @@ function html_data_table(jsonVars, mode) {
                     $('#searchResults' + String(mode)).html(html_data_table(print_string, mode));
                 }
                 else{
-                    var print_string = 'print(\'the search variable is not in this cell!\')';
+                    var print_string = 'print(\'No table returned!\')';
                     console.log(print_string);
                 }
             },
@@ -335,22 +334,21 @@ function html_data_table(jsonVars, mode) {
             success : function (response) {
                 return_state = response['state'];
                 return_data = response['res'];
-                console.log(return_data);
-                console.log(return_state);
                 if(return_state === 'true'){
                     var print_string = return_data.toString();
-                    console.log(print_string);
+
                     var cell = Jupyter.notebook.insert_cell_below('code');
                     cell.set_text("#Import New Table");
-                    cell.render();
-                    var rcell = Jupyter.notebook.insert_cell_below('code');
+                    cell.execute();
+                    var cell_id = Jupyter.notebook.get_selected_cells_indices()[0] + 1;
+                    var rcell = Jupyter.notebook.insert_cell_below('code', cell_id);
                     var running_code = 'from sqlalchemy import create_engine\nuser_name = \'yizhang\'\npassword = \'yizhang\'\ndbname = \'joinstore\'\n' +
                         'def connect2db():\n\tengine = create_engine(\'postgresql://\' + user_name + \':\' + password + \'@localhost/\' + dbname)\n\treturn engine.connect()';
                     execute_code(running_code, rcell);
-                    cell.set_text('eng = connect2db()\ndf_new = pd.read_sql_table(\'' + var_name + '\', eng)\nprint(df_new)');
+                    rcell.set_text('eng = connect2db()\ndf_new = pd.read_sql_table(\'' + var_name + '\', eng)\nprint(df_new)');
                 }
                 else{
-                    var print_string = 'print(\'the search variable is not in this cell!\')';
+                    var print_string = 'print(\'the search table is not in this cell!\')';
                     console.log(print_string);
                 }
             },
@@ -419,6 +417,7 @@ function html_data_table(jsonVars, mode) {
             events.on('varRefresh', varRefresh);
             events.on('searchTable', searchTable);
             events.on('importtable', importtable);
+            events.on('toggleSearch', toggleSearch);
             }
 
     var create_search_div = function(cfg, st, mode) {
@@ -452,7 +451,14 @@ function html_data_table(jsonVars, mode) {
                     .addClass("kill-btn")
                     .attr('title', 'Close window')
                     .click(function() {
-                        toggleVarInspector();
+                        if(name === 'varInspector'){
+                            toggleVarInspector();
+                        }
+                        else{
+                            var json_string = {vname : name};
+                            toggleSearch(json_string);
+                        }
+
                         return false;
                     })
                 )
@@ -650,13 +656,14 @@ function html_data_table(jsonVars, mode) {
         });
     };
 
-    var toggle_search = function(cfg, st) {
+
+    var toggle_search = function(name, cfg, st) {
         // toggle draw (first because of first-click behavior)
 
-        $("#searchResults-wrapper").toggle({
+        $("#" + name + "-wrapper").toggle({
             'progress': function() {},
             'complete': function() {
-                    Jupyter.notebook.metadata['searchResults']['window_display'] = $('#searchResults-wrapper').css('display') == 'block';
+                    Jupyter.notebook.metadata[name]['window_display'] = $('#' + name + '-wrapper').css('display') == 'block';
                     Jupyter.notebook.set_dirty();
             }
         });
