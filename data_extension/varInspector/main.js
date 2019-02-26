@@ -211,12 +211,15 @@ function html_data_table(jsonVars, mode) {
     }
 
     if (mode === 1){
+        //console.log('return result 1');
         var beg_table = '<p><b>Similar Tables</b></p>';
     }
     else if (mode === 2){
+        //console.log('return result 2');
         var beg_table = '<p><b>Linkable Tables</b></p>';
     }
     else{
+        //console.log('return result 3');
         var beg_table = '<p><b>Role Similar Tables</b></p>';
     }
 
@@ -286,33 +289,50 @@ function html_data_table(jsonVars, mode) {
 
         var return_data = ""
         var return_state = ""
+        console.log('here to search!');
 
         $.ajax({
             url: send_url,
             type: 'GET',
             data: data_json,
             dataType: 'json',
+            timeout: 100000,
             success : function (response) {
                 return_state = response['state'];
                 return_data = response['res'];
                 if(return_state === 'true'){
                     var print_string = return_data.toString();
-                    search_inspector(cfg, st, mode);
+                    search_inspector(cfg, st, String(mode));
 
-                    requirejs(['nbextensions/varInspector/jquery.tablesorter.min'],
-                        function() {
-                    setTimeout(function() { if ($('#searchResults' + String(mode)).length>0)
-                        $('#searchResults' + String(mode) + ' table').tablesorter()}, 50)
-                    });
-                    console.log('#searchResults' + String(mode));
+                    //requirejs(['nbextensions/varInspector/jquery.tablesorter.min'],
+                    //    function() {
+                    //setTimeout(function() { if ($('#searchResults' + String(mode)).length>0)
+                    //    $('#searchResults' + String(mode) + ' table').tablesorter()}, 50)
+                    //});
+                    //console.log('#searchResults' + String(mode));
+                    //console.log(print_string);
+                    //console.log(mode);
                     $('#searchResults' + String(mode)).html(html_data_table(print_string, mode));
                 }
                 else{
                     var print_string = 'print(\'No table returned!\')';
                     console.log(print_string);
+                    if(String(mode) == '1'){
+                        alert("Sorry, no similar table detected!");
+                    }
+                    else if (String(mode) == '2'){
+                        alert("Sorry, no linkable table detected!");
+                    }
+                    else{
+                        alert("Sorry no table detected!");
+                    }
+
                 }
             },
-            error : utils.log_ajax_error
+            error: function (request, error) {
+                console.log(arguments);
+                alert(" Can't do because: " + error);
+            }
         });
     }
 
