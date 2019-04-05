@@ -8,11 +8,11 @@ import jupyter_core
 from jupyter_client import find_connection_file
 from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
 from ipython_genutils.path import filefind
-from search import WithProv
+from search import WithProv, WithProv_Sk
 import site
 from search import search_tables
 from table_db import dbname
-import ast
+#import ast_test
 import os
 
 
@@ -68,6 +68,9 @@ class HelloWorldHandler(IPythonHandler):
     def fetch_search_mode(self):
         self.mode = int(self.data['mode'][0])
 
+    def fetch_code(self):
+        self.code = str(self.data['code'][0])[2:-1]
+
     def fetch_dbinfo(self):
         self.dbinfo = {}
         self.dbinfo['dbnm'] = 'joinstore'#self.settings['postgres_dbnm']
@@ -80,28 +83,26 @@ class HelloWorldHandler(IPythonHandler):
         self.data = self.request.arguments
         self.fetch_search_var()
         self.fetch_kernel_id()
-
         self.fetch_search_mode()
         #self.fetch_dbinfo()
 
         if self.mode == 0:
-            output = search_tables(search_test_class, self.search_var, self.mode)
-            if output != "":
-                self.data_trans = {'res': output, 'state': str('true')}
-                self.write(json.dumps(self.data_trans))
+            if self.search_var in search_test_class.real_tables:
+                    self.data_trans = {'res': "", 'state': str('true')}
+                    self.write(json.dumps(self.data_trans))
             else:
-                self.data_trans = {'res': output, 'state': str('false')}
+                self.data_trans = {'res': "", 'state': str('false')}
                 self.write(json.dumps(self.data_trans))
         else:
+            self.fetch_code()
             success, output = self.find_variable()
-
             if success == True:
-                data_json = search_tables(search_test_class, output, self.mode)
+                data_json = search_tables(search_test_class, output, self.mode, self.code, self.search_var)
                 if data_json != "":
                     self.data_trans = {'res': data_json, 'state':str('true')}
                     self.write(json.dumps(self.data_trans))
                 else:
-                    self.data_trans = {'res': output, 'state': str('false')}
+                    self.data_trans = {'res': data_json, 'state': str('false')}
                     self.write(json.dumps(self.data_trans))
             else:
                 print("Variable can not be founded!")

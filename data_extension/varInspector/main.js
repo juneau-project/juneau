@@ -26,7 +26,7 @@ define([
     var cfg = {
         'window_display': false,
         'cols': {
-            'lenName': 16,
+            'lenName': 24,
             'lenType': 16,
             'lenVar': 40
         },
@@ -76,14 +76,12 @@ define([
 
     //.....................global variables....
 
-
     var st = {}
     st.config_loaded = false;
     st.extension_initialized = false;
     st.code_init = "";
 
     function read_config(name, cfg, callback) { // read after nb is loaded
-        console.log(name);
         var config = Jupyter.notebook.config;
         config.loaded.then(function() {
             // config may be specified at system level or at document level.
@@ -125,9 +123,9 @@ define([
     }
 
     function toggleSearch(data){
-        console.log(data);
-        toggle_search(data.vname, cfg, st)
+        toggle_search(data.vname, cfg, st);
     }
+
     var varInspector_button = function() {
         if (!Jupyter.toolbar) {
             events.on("app_initialized.NotebookApp", varInspector_button);
@@ -156,13 +154,16 @@ define([
 
 
 function html_table(jsonVars) {
+
     function _trunc(x, L) {
         x = String(x)
         if (x.length < L) return x
         else return x.substring(0, L - 3) + '...'
     }
+
     var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
     var kernel_config = cfg.kernels_config[kernelLanguage];
+
     var varList = JSON.parse(String(jsonVars))
     var kernel_id = String(Jupyter.notebook.kernel.id);
     var shape_str = '';
@@ -182,7 +183,7 @@ function html_table(jsonVars) {
         //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
         //var jstr = listVar.varContent;
         beg_table +=
-            '<tr><td>' + _trunc(listVar.varName, cfg.cols.lenName) + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
+            '<tr><td>' + listVar.varName + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
             '</td><td>' + listVar.varSize + shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
             '</td><td><button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \">s</button>' +
             '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \">l</button>' +
@@ -190,6 +191,7 @@ function html_table(jsonVars) {
             '</tr>';
     });
     var full_table = beg_table + '</table></div>';
+    //console.log(full_table)
     return full_table;
     }
 
@@ -211,15 +213,15 @@ function html_data_table(jsonVars, mode) {
     }
 
     if (mode === 1){
-        //console.log('return result 1');
+        console.log('return result 1');
         var beg_table = '<p><b>Similar Tables</b></p>';
     }
     else if (mode === 2){
-        //console.log('return result 2');
+        console.log('return result 2');
         var beg_table = '<p><b>Linkable Tables</b></p>';
     }
-    else{
-        //console.log('return result 3');
+    else if (mode === 3){
+        console.log('return result 3');
         var beg_table = '<p><b>Role Similar Tables</b></p>';
     }
 
@@ -237,12 +239,13 @@ function html_data_table(jsonVars, mode) {
         count += 1;
         //var table_string = jstr.replace('\'', '\"');
         beg_table +=
-            '<tr><td>' + String(count) + '</td><td>' + _trunc(listVar.varName, cfg.cols.lenName) + '</td>' +
+            '<tr><td>' + String(count) + '</td><td>' + listVar.varName + '</td>' +
             '<td>' + listVar.varContent +
             '</td> <td><button onClick = \"Jupyter.notebook.events.trigger(\'importtable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:0}) \">import</button></td>' +
             '</tr>';
     });
     var full_table = beg_table + '</table></div>';
+    //console.log(full_table)
     return full_table;
     }
 
@@ -284,12 +287,23 @@ function html_data_table(jsonVars, mode) {
         var mode = data.mode;
         var var_value = data.var_name;
         var kid = data.kid;
-        var data_json = {'var': var_value, 'kid':kid, 'mode': mode};
+
         var send_url = utils.url_path_join(Jupyter.notebook.base_url, '/stable');
 
         var return_data = ""
         var return_state = ""
-        console.log('here to search!');
+
+        var cells = Jupyter.notebook.get_cells()
+        var clen = Jupyter.notebook.get_selected_cells_indices()[0]
+
+        var i;
+        var cell_code = "";
+        for (i = 0; i < clen; i++) {
+            if(cells[i].cell_type === 'code'){
+                cell_code = cell_code + cells[i].get_text() + '\n';
+            }
+        }
+        var data_json = {'var': var_value, 'kid':kid, 'mode': mode, 'code':cell_code};
 
         $.ajax({
             url: send_url,
@@ -300,19 +314,15 @@ function html_data_table(jsonVars, mode) {
             success : function (response) {
                 return_state = response['state'];
                 return_data = response['res'];
+                console.log('Take A Look of Results.')
+                console.log(return_state)
+                console.log(return_data)
                 if(return_state === 'true'){
                     var print_string = return_data.toString();
-                    search_inspector(cfg, st, String(mode));
-
-                    //requirejs(['nbextensions/varInspector/jquery.tablesorter.min'],
-                    //    function() {
-                    //setTimeout(function() { if ($('#searchResults' + String(mode)).length>0)
-                    //    $('#searchResults' + String(mode) + ' table').tablesorter()}, 50)
-                    //});
-                    //console.log('#searchResults' + String(mode));
-                    //console.log(print_string);
-                    //console.log(mode);
+                    search_inspector(cfg, st, 'searchResults' + String(mode));
                     $('#searchResults' + String(mode)).html(html_data_table(print_string, mode));
+                    $('#searchResults' + String(mode) + '-wrapper').css('display', 'block');
+                    //$('#' + name + '-wrapper').css('display', Jupyter.notebook.metadata['searchResults' + String(mode)]['window_display'] ? 'block' : 'block');
                 }
                 else{
                     var print_string = 'print(\'No table returned!\')';
@@ -356,7 +366,6 @@ function html_data_table(jsonVars, mode) {
                 return_data = response['res'];
                 if(return_state === 'true'){
                     var print_string = return_data.toString();
-
                     var cell = Jupyter.notebook.insert_cell_below('code');
                     cell.set_text("#Import New Table");
                     cell.execute();
@@ -440,8 +449,8 @@ function html_data_table(jsonVars, mode) {
             events.on('toggleSearch', toggleSearch);
             }
 
-    var create_search_div = function(cfg, st, mode) {
-        create_named_div('searchResults' + String(mode), 'Search Results', cfg, st);
+    var create_search_div = function(cfg, st, name) {
+        create_named_div(name, 'Search Results', cfg, st);
     }
 
     var create_varInspector_div = function(cfg, st) {
@@ -574,8 +583,8 @@ function html_data_table(jsonVars, mode) {
         })
 
         // restore window position at startup
-        console.log(name);
-        console.log(Jupyter.notebook.metadata);
+        //console.log(name);
+        //console.log(Jupyter.notebook.metadata);
             if (Jupyter.notebook.metadata[name].position !== undefined) {
                 $('#' + name + '-wrapper').css(Jupyter.notebook.metadata[name].position);
             }
@@ -596,8 +605,10 @@ function html_data_table(jsonVars, mode) {
                     }
                 }
                 if (Jupyter.notebook.metadata[name]['window_display'] !== undefined) {
-                    console.log(log_prefix + "Restoring Variable Inspector window");
-                    $('#' + name + '-wrapper').css('display', Jupyter.notebook.metadata[name]['window_display'] ? 'block' : 'none');
+                    console.log(log_prefix + "Restoring " + name + " window");
+                    console.log(Jupyter.notebook.metadata[name]['window_display']);
+                    $('#' + name + '-wrapper').css('display', 'block');
+
                     if ($('#' + name + '-wrapper').hasClass('closed')){
                         $('#' + name).height(cfg.oldHeight - $('#' + name + '-header').height())
                     }else{
@@ -628,35 +639,17 @@ function html_data_table(jsonVars, mode) {
         varRefresh();
     };
 
-    var search_inspector = function(cfg, st, mode) {
+    var search_inspector = function(cfg, st, name) {
 
-        cfg = read_config('searchResults' + String(mode), cfg, function() {
-            // Called when config is available
-            if (typeof Jupyter.notebook.kernel !== "undefined" && Jupyter.notebook.kernel !== null) {
-                var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
-                var kernel_config = cfg.kernels_config[kernelLanguage];
-                if (kernel_config === undefined) { // Kernel is not supported
-                    console.warn(log_prefix + " Sorry, can't use kernel language " + kernelLanguage + ".\n" +
-                        "Configurations are currently only defined for the following languages:\n" +
-                        Object.keys(cfg.kernels_config).join(', ') + "\n" +
-                        "See readme for more details.");
-                    return
-                }
-            }
-            else{
-                console.warn(log_prefix + "Kernel not available?");
-            }
-        }); // called after config is stable
-
-        var varInspector_wrapper = $("#searchResults" + String(mode) + "-wrapper");
+        var varInspector_wrapper = $("#" + name + "-wrapper");
 
         if (varInspector_wrapper.length === 0) {
-            create_search_div(cfg, st, mode);
+            create_search_div(cfg, st, name);
         }
 
         $(window).resize(function() {
-            $('#searchResults' + String(mode)).css({ maxHeight: $(window).height() - 30 });
-            $('#searchResults' + String(mode) + '-wrapper').css({ maxHeight: $(window).height() - 10 });
+            $('#' + name ).css({ maxHeight: $(window).height() - 30 });
+            $('#' + name + '-wrapper').css({ maxHeight: $(window).height() - 10 });
         });
 
         $(window).trigger('resize');
@@ -685,6 +678,7 @@ function html_data_table(jsonVars, mode) {
             'complete': function() {
                     Jupyter.notebook.metadata[name]['window_display'] = $('#' + name + '-wrapper').css('display') == 'block';
                     Jupyter.notebook.set_dirty();
+                search_inspector(cfg, st, name);
             }
         });
     };
