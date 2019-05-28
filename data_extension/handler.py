@@ -14,6 +14,7 @@ from search import search_tables
 from table_db import dbname
 #import ast_test
 import os
+import shutil
 
 
 stdflag = False
@@ -39,6 +40,7 @@ class HelloWorldHandler(IPythonHandler):
         if sys.version[0] == '3':
             output = output.decode("utf-8")
             error = error.decode("utf-8")
+        output = output.strip('\n')
 
         msg_id.stdout.close()
 
@@ -47,7 +49,8 @@ class HelloWorldHandler(IPythonHandler):
             return (sta, error)
         else:
             sta = True
-            var_obj = pd.read_csv("var_dir/" + self.search_var + ".csv")
+            var_obj = pd.read_csv(output + "/" + self.search_var + ".csv")
+            shutil.rmtree(output)
             return (sta, var_obj)
 
     def fetch_kernel_id(self):

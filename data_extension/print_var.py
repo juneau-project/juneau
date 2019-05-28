@@ -3,7 +3,7 @@ import jupyter_core.paths
 import uuid
 import time
 import tempfile
-import shutil
+
 
 from jupyter_client import kernelspec
 
@@ -23,15 +23,16 @@ def main(kid, var):
 
     dirpath = tempfile.mkdtemp()
 
-    code = var + ".to_csv(\'" + dirpath + var + ".csv\', index = False)"
+    code = var + ".to_csv(\'" + dirpath + '/' +var + ".csv\', index = False)"
 
     msg_id = km.execute(code, timeout=TIMEOUT)
     #km.execute_interactive("whos", timeout=TIMEOUT)
     time.sleep(5)
     km.stop_channels()
-    shutil.rmtree(dirpath)
 
-    return
+    print(dirpath)
+
+    #return dirpath
 
 
     #km.execute('%reset -f')
