@@ -152,8 +152,10 @@ define([
         document.getElementsByTagName("head")[0].appendChild(link);
     };
 
-
+// list tables
 function html_table(jsonVars) {
+
+    var table_dataTypes = ['DataFrame', 'ndarray', 'Series', 'list'];
 
     function _trunc(x, L) {
         x = String(x)
@@ -182,6 +184,9 @@ function html_table(jsonVars) {
         }
         //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
         //var jstr = listVar.varContent;
+        var dtype_index = table_dataTypes.indexOf(String(listVar.varType));
+        if (dtype_index != -1){
+        console.log(String(listVar.varType));
         beg_table +=
             '<tr><td>' + listVar.varName + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
             '</td><td>' + listVar.varSize + shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
@@ -189,12 +194,14 @@ function html_table(jsonVars) {
             '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \">l</button>' +
             '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \">r</button></td>' +
             '</tr>';
+        }
     });
     var full_table = beg_table + '</table></div>';
     //console.log(full_table)
     return full_table;
     }
 
+// show returned tables
 function html_data_table(jsonVars, mode) {
     function _trunc(x, L) {
         x = String(x)
@@ -285,7 +292,7 @@ function html_data_table(jsonVars, mode) {
 
     function searchTable(evt, data){
         var mode = data.mode;
-        var var_value = data.var_name;
+        var var_name = data.var_name;
         var kid = data.kid;
 
         var send_url = utils.url_path_join(Jupyter.notebook.base_url, '/stable');
@@ -303,7 +310,7 @@ function html_data_table(jsonVars, mode) {
                 cell_code = cell_code + cells[i].get_text() + '\n';
             }
         }
-        var data_json = {'var': var_value, 'kid':kid, 'mode': mode, 'code':cell_code};
+        var data_json = {'var': var_name, 'kid':kid, 'mode': mode, 'code':cell_code};
 
         $.ajax({
             url: send_url,
@@ -314,9 +321,9 @@ function html_data_table(jsonVars, mode) {
             success : function (response) {
                 return_state = response['state'];
                 return_data = response['res'];
-                console.log('Take A Look of Results.')
-                console.log(return_state)
-                console.log(return_data)
+                //console.log('Take A Look of Results.')
+                //console.log(return_state)
+                //console.log(return_data)
                 if(return_state === 'true'){
                     var print_string = return_data.toString();
                     search_inspector(cfg, st, 'searchResults' + String(mode));
@@ -326,7 +333,7 @@ function html_data_table(jsonVars, mode) {
                 }
                 else{
                     var print_string = 'print(\'No table returned!\')';
-                    console.log(print_string);
+                    //console.log(print_string);
                     if(String(mode) == '1'){
                         alert("Sorry, no similar table detected!");
                     }
@@ -668,7 +675,6 @@ function html_data_table(jsonVars, mode) {
             }
         });
     };
-
 
     var toggle_search = function(name, cfg, st) {
         // toggle draw (first because of first-click behavior)

@@ -8,7 +8,7 @@ import jupyter_core
 from jupyter_client import find_connection_file
 from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
 from ipython_genutils.path import filefind
-from search import WithProv, WithProv_Sk
+from search import WithProv_Optimized
 import site
 from search import search_tables
 from table_db import dbname
@@ -18,8 +18,7 @@ import os
 
 stdflag = False
 
-types_to_exclude = ['module', 'function', 'builtin_function_or_method',
-                    'instance', '_Feature', 'type', 'ufunc']
+types_to_exclude = ['module', 'function', 'builtin_function_or_method', 'instance', '_Feature', 'type', 'ufunc']
 
 types_to_include = ['ndarray', 'DataFrame', 'list']
 
@@ -31,9 +30,6 @@ class HelloWorldHandler(IPythonHandler):
 
     def find_variable(self):
 
-        if stdflag == True:
-            print("Finding Variables:\n")
-
         file_name = site.getsitepackages()[0] + '/data_extension/print_var.py'
         msg_id = subprocess.Popen(['python', file_name, self.kernel_id, self.search_var],
                                   stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -43,11 +39,6 @@ class HelloWorldHandler(IPythonHandler):
         if sys.version[0] == '3':
             output = output.decode("utf-8")
             error = error.decode("utf-8")
-
-        if stdflag == True:
-            print("*** THE OUTPUT ***")
-            print(output)
-            print(error)
 
         msg_id.stdout.close()
 
@@ -84,18 +75,19 @@ class HelloWorldHandler(IPythonHandler):
         self.fetch_search_var()
         self.fetch_kernel_id()
         self.fetch_search_mode()
-        #self.fetch_dbinfo()
 
-        if self.mode == 0:
+        if self.mode == 0: # return table
             if self.search_var in search_test_class.real_tables:
-                    self.data_trans = {'res': "", 'state': str('true')}
-                    self.write(json.dumps(self.data_trans))
+                self.data_trans = {'res': "", 'state': str('true')}
+                self.write(json.dumps(self.data_trans))
             else:
                 self.data_trans = {'res': "", 'state': str('false')}
                 self.write(json.dumps(self.data_trans))
         else:
             self.fetch_code()
+
             success, output = self.find_variable()
+
             if success == True:
                 data_json = search_tables(search_test_class, output, self.mode, self.code, self.search_var)
                 if data_json != "":
@@ -105,7 +97,7 @@ class HelloWorldHandler(IPythonHandler):
                     self.data_trans = {'res': data_json, 'state': str('false')}
                     self.write(json.dumps(self.data_trans))
             else:
-                print("Variable can not be founded!")
+                print("The table can not be founded!")
                 print(output)
                 self.data_trans = {'res':str(""), 'state':str('false')}
                 self.write(json.dumps(self.data_trans))
@@ -119,7 +111,7 @@ def load_jupyter_server_extension(nb_server_app):
     """
     nb_server_app.log.info("Hello World!")
     global search_test_class
-    search_test_class = WithProv(dbname, 'rowstore')
+    search_test_class = WithProv_Optimized(dbname, 'rowstore')
     web_app = nb_server_app.web_app
     host_pattern = '.*$'
     route_pattern = url_path_join(web_app.settings['base_url'], r'/stable')

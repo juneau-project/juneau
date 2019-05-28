@@ -23,7 +23,7 @@ def main(kid, var):
 
     dirpath = tempfile.mkdtemp()
 
-    code = var + ".to_csv(\'" + dirpath + var + ".csv\')"
+    code = var + ".to_csv(\'" + dirpath + var + ".csv\', index = False)"
 
     msg_id = km.execute(code, timeout=TIMEOUT)
     #km.execute_interactive("whos", timeout=TIMEOUT)

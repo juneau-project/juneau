@@ -140,6 +140,7 @@ class SchemaMapping:
         print('sim times: ', c1)
         return Mpair, rv
 
+    # Do full schema mapping
     def mapping_naive_incremental(self, tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped = {}):
 
         start_time = timeit.default_timer()
@@ -251,7 +252,8 @@ class SchemaMapping:
         #print('full schema mapping: ', time_total)
         return Mpair, meta_mapping, unmatched, time_total
 
-    def mapping_naive_tables(self, tableA, valid_keys, schema_element, schema_dtype, tflag):
+    # Do schema mapping for tables when looking for similar tables
+    def mapping_naive_tables(self, tableA, valid_keys, schema_element, schema_dtype, tflag = False):
 
         start_time = timeit.default_timer()
         time1 = 0
@@ -306,6 +308,7 @@ class SchemaMapping:
                     s1 = timeit.default_timer()
 
                     sim_col = self.jaccard_similarity(colA, colB)
+
                     e1 = timeit.default_timer()
                     time1 += e1 - s1
 
@@ -324,12 +327,12 @@ class SchemaMapping:
         end_time = timeit.default_timer()
 
         if tflag:
-            print('raw schema mapping: ', end_time - start_time)
-            print('sim schema mapping: ', time1)
+            print('Schema Mapping Before Search: %s Seconds.'%(end_time - start_time))
 
         return Mpair
 
-    def mapping_naive_tables_join(self, tableA, valid_keys, schema_element_sample, schema_element, unmatched, tflag, schema_dtype):
+    # Do schema mapping for tables when looking for joinable tables
+    def mapping_naive_tables_join(self, tableA, valid_keys, schema_element_sample, schema_element, schema_dtype, unmatched, tflag = False):
 
         start_time = timeit.default_timer()
         time1 = 0
@@ -417,9 +420,11 @@ class SchemaMapping:
                         colB = colB
 
                 for j in range(shmal):
+
                     nameA = scma[j]
                     if nameA == "Unnamed: 0" or "index" in nameA:
                         continue
+
                     if nameB in unmatched[group][nameA]:
                         continue
 
@@ -433,7 +438,6 @@ class SchemaMapping:
                         continue
 
                     s1 = timeit.default_timer()
-
                     sim_col = self.jaccard_similarity(colA, colB)
                     e1 = timeit.default_timer()
                     time1 += e1 - s1
@@ -462,11 +466,11 @@ class SchemaMapping:
 
         return Mpair, unmatched
 
+    # Do schema mapping on Groups
     def mapping_naive_groups(self, tableA, tableA_valid, schema_element):
 
         start_time = timeit.default_timer()
         time1 = 0
-        c1 = 0
 
         Mpair = {}
         MpairR = {}
@@ -494,13 +498,13 @@ class SchemaMapping:
                 if nameA not in acol_set:
                     acol_set[nameA] = list(set(colA))
 
-                try:
-                    colA = colA[~np.isnan(colA)]
-                except:
-                    try:
-                        colA = colA[colA != np.array(None)]
-                    except:
-                        colA = colA
+                #try:
+                #    colA = colA[~np.isnan(colA)]
+                #except:
+                #    try:
+                #        colA = colA[colA != np.array(None)]
+                #    except:
+                #        colA = colA
 
                 for j in schema_element[group].keys():
 
@@ -520,14 +524,12 @@ class SchemaMapping:
                     sim_col = self.jaccard_similarity(acol_set[nameA], colB)
                     e1 = timeit.default_timer()
                     time1 += e1 - s1
-                    c1 += 1
-
+                    #c1 += 1
                     matching.append((nameA, nameB, sim_col))
 
             matching = sorted(matching, key=lambda d: d[2], reverse=True)
+
             if len(matching) == 0:
-                #print(scma)
-                #print(schema_element[group].keys())
                 continue
 
             if matching[0][2] < self.sim_thres:
@@ -536,9 +538,6 @@ class SchemaMapping:
                 group_list.append(group)
 
         end_time = timeit.default_timer()
-#        print('raw schema mapping: ', end_time - start_time)
-#        print('sim schema mapping: ', time1)
-#        print('sim times: ', c1)
 
         return group_list
 
@@ -953,8 +952,8 @@ class FuncLister(ast.NodeVisitor):
         return return_node
 
     def visit_Assign(self, node):
-        print("here!")
-        print(node.__dict__)
+        #print("here!")
+        #print(node.__dict__)
 
         left_array = []
         for nd in node.targets:
@@ -965,7 +964,7 @@ class FuncLister(ast.NodeVisitor):
                 if ret:
                     left_array = left_array + ret
 
-        print(node.value.__dict__)
+        #print(node.value.__dict__)
         right_array = []
         if 'id' in node.value.__dict__:
             right_array.append((node.value.id, 'Assign'))
@@ -996,11 +995,11 @@ class FuncLister(ast.NodeVisitor):
 def parse_code(all_code):
 
     test = FuncLister()
-    print(all_code)
+    #print(all_code)
     tree = ast.parse(all_code)
-    print(tree)
+    #print(tree)
     test.visit(tree)
-    print(test.dependency)
+    #print(test.dependency)
 
     return test.dependency
 
