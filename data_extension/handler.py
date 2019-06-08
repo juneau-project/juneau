@@ -14,6 +14,7 @@ from search import search_tables
 from table_db import dbname
 #import ast_test
 import os
+from pandas.compat import StringIO
 import shutil
 
 
@@ -49,8 +50,7 @@ class HelloWorldHandler(IPythonHandler):
             return (sta, error)
         else:
             sta = True
-            var_obj = pd.read_csv(output + "/" + self.search_var + ".csv")
-            shutil.rmtree(output)
+            var_obj = pd.read_json(output, orient='split')
             return (sta, var_obj)
 
     def fetch_kernel_id(self):
