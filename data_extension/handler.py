@@ -8,15 +8,21 @@ import jupyter_core
 from jupyter_client import find_connection_file
 from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
 from ipython_genutils.path import filefind
-from search import WithProv_Optimized
+from data_extension.search import WithProv_Optimized
 import site
-from search import search_tables
-from table_db import dbname
+from data_extension.search import search_tables
+#import data_extension.table_db
 #import ast_test
 import os
-from pandas.compat import StringIO
+import sys
+if sys.version_info[0] < 3:
+    from StringIO import StringIO
+else:
+    from io import StringIO
+
 import shutil
 
+import data_extension.config as cfg
 
 stdflag = False
 
@@ -67,11 +73,11 @@ class HelloWorldHandler(IPythonHandler):
 
     def fetch_dbinfo(self):
         self.dbinfo = {}
-        self.dbinfo['dbnm'] = 'joinstore'#self.settings['postgres_dbnm']
-        self.dbinfo['host'] = 'localhost'#self.settings['postgres_url']
-        self.dbinfo['user'] = 'yizhang'#self.settings['postgres_user']
-        self.dbinfo['pswd'] = 'yizhang'#self.settings['postgres_pswd']
-        self.dbinfo['schema'] = 'rowstore'
+        self.dbinfo['dbnm'] = cfg.sql_dbname#'joinstore'#self.settings['postgres_dbnm']
+        self.dbinfo['host'] = cfg.sql_host#'localhost'#self.settings['postgres_url']
+        self.dbinfo['user'] = cfg.sql_name#'yizhang'#self.settings['postgres_user']
+        self.dbinfo['pswd'] = cfg.sql_password#'yizhang'#self.settings['postgres_pswd']
+        self.dbinfo['schema'] = cfg.sql_dbs#'rowstore'
 
     def get(self):
         self.data = self.request.arguments
@@ -112,11 +118,11 @@ def load_jupyter_server_extension(nb_server_app):
     Args:
         nb_server_app (NotebookWebApplication): handle to the Notebook webserver instance.
     """
-    nb_server_app.log.info("Hello World!")
+    nb_server_app.log.info("Juneau extension loading...")
     global search_test_class
-    search_test_class = WithProv_Optimized(dbname, 'rowstore')
+    search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)#dbname,'rowstore')
     web_app = nb_server_app.web_app
     host_pattern = '.*$'
     route_pattern = url_path_join(web_app.settings['base_url'], r'/stable')
     web_app.add_handlers(host_pattern, [(route_pattern, HelloWorldHandler)])
-    nb_server_app.log.info("Data Extension Loaded!")
+    nb_server_app.log.info("Juneau extension successfully loaded!")

@@ -7,21 +7,67 @@ import ast
 import queue
 import networkx as nx
 
-user_name = "yizhang"
-password = "yizhang"
-dbname = "joinstore"
+import data_extension.config as cfg
 
 special_type = ['np', 'pd']
 
+
+def create_tables_as_needed(eng):
+    eng.execute("create schema if not exists " + cfg.sql_dbs + ';')
+    eng.execute("create schema if not exists " + cfg.sql_graph + ';')
+
+    eng.execute("CREATE TABLE IF NOT EXISTS graph_model.dependen (" + \
+                "view_id character varying(1000)," + \
+                "view_cmd text" + \
+                ");")
+
+    eng.execute("CREATE TABLE IF NOT EXISTS graph_model.line2cid (" + \
+                "view_id character varying(1000)," + \
+                "view_cmd text" + \
+                ");")
+
+
 def connect2db(dbname):
-    engine = create_engine("postgresql://" + user_name + ":" + password + "@localhost/" + dbname)
-    return engine.connect()
+    """
+    Connect to the PostgreSQL instance, creating it if necessary
+
+    :param dbname:
+    :return:
+    """
+    try:
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
+                               "/" + dbname)#cfg.sql_dbname)
+
+        eng = engine.connect()
+        create_tables_as_needed(eng)
+
+        return eng
+    except:
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+                               "/")
+        eng = engine.connect()
+        eng.connection.connection.set_isolation_level(0)
+        eng.execute("create database " + dbname + ';')#'#cfg.sql_dbname + ';')
+
+        create_tables_as_needed(eng)
+        eng.connection.connection.set_isolation_level(1)
+
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
+                               "/" + dbname)#cfg.sql_dbname)
+        return engine.connect()
 
 def connect2gdb():
-    graph = Graph("http://neo4j:yizhang@localhost:7474/db/data")
+    graph = Graph("http://" + cfg.neo_name + ":" + cfg.neo_password + "@" + cfg.neo_host + "/db/" + cfg.neo_db)
     return graph
 
 def fetch_all_table_names(schema, eng):
+    """
+    Find all tables within a given schema
+
+    :param schema: Schema to search
+    :param eng: Engine connection
+    :return:
+    """
     tables = eng.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = \'" + schema + "\';")
     base_table_name = []
     for tb in tables :

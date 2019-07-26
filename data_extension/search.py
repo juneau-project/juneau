@@ -1,11 +1,13 @@
 from py2neo import NodeMatcher
 #from table_db import user_name, password, dbname
-from table_db import connect2gdb, connect2db
-from table_db import fetch_all_table_names, fetch_all_views
-from table_db import SchemaMapping, SchemaMapping_SK
-from table_db import generate_graph
-from table_db import parse_code
-from table_db import pre_vars
+from data_extension.table_db import connect2gdb, connect2db
+from data_extension.table_db import fetch_all_table_names, fetch_all_views
+from data_extension.table_db import SchemaMapping, SchemaMapping_SK
+from data_extension.table_db import generate_graph
+from data_extension.table_db import parse_code
+from data_extension.table_db import pre_vars
+
+import data_extension.config as cfg
 
 import json
 import pandas as pd
@@ -264,9 +266,9 @@ class WithProv:
         self.init_schema_mapping()
         self.sketch_meta_mapping()
 
-        logging.info('Data Search Extension Strated!')
+        logging.info('Data Search Extension Started!')
 
-        self.n_l2cid = self.__line2cid('/Users/yizhang/PycharmProjects/sig_demo/nb_data_extension/notebook_data_extension/data_extension/similar_table_lcid')
+        self.n_l2cid = self.__line2cid('~/similar_table_lcid')
 
     def app_common_key(self,tableA, tableB, SM, key, thres_prune): # thres_prune = 0.2
 
@@ -1278,8 +1280,8 @@ class WithProv_Optimized:
 
     def read_graph_of_notebook(self):
         Graphs = {}
-        dependency = pd.read_sql_table('dependen', self.eng, schema='graph_model')
-        line2cid = pd.read_sql_table('line2cid', self.eng, schema='graph_model')
+        dependency = pd.read_sql_table('dependen', self.eng, cfg.sql_graph)#, schema='graph_model')
+        line2cid = pd.read_sql_table('line2cid', self.eng, cfg.sql_graph)#, schema='graph_model')
         #print(dependency)
         #print(line2cid)
 
