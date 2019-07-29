@@ -17,7 +17,7 @@ define([
 ) {
     "use strict";
 
-    var mod_name = "varInspector";
+    var mod_name = "dataset_inspector";
     var log_prefix = '[' + mod_name + '] ';
 
 
@@ -119,26 +119,26 @@ define([
     var sortable;
 
     function toggleVarInspector() {
-        toggle_varInspector(cfg, st)
+        toggle_dataset_inspector(cfg, st)
     }
 
     function toggleSearch(data){
         toggle_search(data.vname, cfg, st);
     }
 
-    var varInspector_button = function() {
+    var dataset_inspector_button = function() {
         if (!Jupyter.toolbar) {
-            events.on("app_initialized.NotebookApp", varInspector_button);
+            events.on("app_initialized.NotebookApp", dataset_inspector_button);
             return;
         }
-        if ($("#varInspector_button").length === 0) {
+        if ($("#dataset_inspector_button").length === 0) {
             $(Jupyter.toolbar.add_buttons_group([
                 Jupyter.keyboard_manager.actions.register ({
                     'help'   : 'Variable Inspector',
                     'icon'   : 'fa-crosshairs',
                     'handler': toggleVarInspector,
-                }, 'toggle-variable-inspector', 'varInspector')
-            ])).find('.btn').attr('id', 'varInspector_button');
+                }, 'toggle-variable-inspector', 'dataset_inspector')
+            ])).find('.btn').attr('id', 'dataset_inspector_button');
         }
     };
 
@@ -152,109 +152,110 @@ define([
         document.getElementsByTagName("head")[0].appendChild(link);
     };
 
-// list tables
-function html_table(jsonVars) {
+    // list tables
+    function html_table(jsonVars) {
 
-    var table_dataTypes = ['DataFrame', 'ndarray', 'Series', 'list'];
+        var table_dataTypes = ['DataFrame', 'ndarray', 'Series', 'list'];
 
-    function _trunc(x, L) {
-        x = String(x)
-        if (x.length < L) return x
-        else return x.substring(0, L - 3) + '...'
-    }
-
-    var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
-    var kernel_config = cfg.kernels_config[kernelLanguage];
-
-    var varList = JSON.parse(String(jsonVars))
-    var kernel_id = String(Jupyter.notebook.kernel.id);
-    var shape_str = '';
-    var has_shape = false;
-    if (varList.some(listVar => "varShape" in listVar && listVar.varShape !== '')) { //if any of them have a shape
-        shape_str = '<th >Shape</th>';
-        has_shape = true;
-    }
-    var beg_table = '<div class=\"inspector\"><table class=\"table fixed table-condensed table-nonfluid \"><col /> \
- <col  /><col /><thead><tr><th >Name</th><th >Type</th><th >Size</th>' + shape_str + '<th >Value</th><th>Search</th></tr></thead><tr><td> \
- </td></tr>';
-    varList.forEach(listVar => {
-        var shape_col_str = '</td><td>';
-        if (has_shape) {
-            shape_col_str = '</td><td>' + listVar.varShape + '</td><td>';
+        function _trunc(x, L) {
+            x = String(x)
+            if (x.length < L) return x
+            else return x.substring(0, L - 3) + '...'
         }
-        //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
-        //var jstr = listVar.varContent;
-        var dtype_index = table_dataTypes.indexOf(String(listVar.varType));
-        if (dtype_index != -1){
-        console.log(String(listVar.varType));
-        beg_table +=
-            '<tr><td>' + listVar.varName + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
-            '</td><td>' + listVar.varSize + shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
-            '</td><td><button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \">s</button>' +
-            '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \">l</button>' +
-            '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \">r</button></td>' +
-            '</tr>';
+
+        var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
+        var kernel_config = cfg.kernels_config[kernelLanguage];
+
+        var varList = JSON.parse(String(jsonVars))
+        var kernel_id = String(Jupyter.notebook.kernel.id);
+        var shape_str = '';
+        var has_shape = false;
+        if (varList.some(listVar => "varShape" in listVar && listVar.varShape !== '')) { //if any of them have a shape
+            shape_str = '<th >Shape</th>';
+            has_shape = true;
         }
-    });
-    var full_table = beg_table + '</table></div>';
-    //console.log(full_table)
-    return full_table;
-    }
-
-// show returned tables
-function html_data_table(jsonVars, mode) {
-    function _trunc(x, L) {
-        x = String(x)
-        if (x.length < L) return x
-        else return x.substring(0, L - 3) + '...'
-    }
-    var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
-    var kernel_config = cfg.kernels_config[kernelLanguage];
-    var varList = JSON.parse(String(jsonVars))
-    var kernel_id = String(Jupyter.notebook.kernel.id);
-    var shape_str = '';
-    var has_shape = false;
-    if (varList.some(listVar => "varShape" in listVar && listVar.varShape !== '')) { //if any of them have a shape
-        shape_str = '<th >Shape</th>';
-        has_shape = true;
-    }
-
-    if (mode === 1){
-        console.log('return result 1');
-        var beg_table = '<p><b>Similar Tables</b></p>';
-    }
-    else if (mode === 2){
-        console.log('return result 2');
-        var beg_table = '<p><b>Linkable Tables</b></p>';
-    }
-    else if (mode === 3){
-        console.log('return result 3');
-        var beg_table = '<p><b>Role Similar Tables</b></p>';
-    }
-
-    beg_table += '<div class=\"inspector\"><table class=\"table fixed table-condensed table-nonfluid \"><col /> \
- <col  /><col /><thead><tr><th>Rank</th><th >Name</th>' + shape_str + '<th >Value</th><th>Operation</th></tr></thead><tr><td> \
- </td></tr>';
-    var count = 0
-    varList.forEach(listVar => {
-        var shape_col_str = '</td><td>';
-        if (has_shape) {
-            shape_col_str = '</td><td>' + listVar.varShape + '</td><td>';
+        var beg_table = '<div class=\"inspector\"><table class=\"table fixed table-condensed table-nonfluid \"><col /> \
+     <col  /><thead><tr><th >Name</th><th >Type</th>' + shape_str + '<th >Value</th><th>Search</th></tr></thead><tr><td> \
+     </td></tr>';
+        varList.forEach(listVar => {
+            var shape_col_str = '</td><td>';
+            if (has_shape) {
+                shape_col_str = '</td><td>' + listVar.varShape + '</td><td>';
+            }
+            //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
+            //var jstr = listVar.varContent;
+            var dtype_index = table_dataTypes.indexOf(String(listVar.varType));
+            if (dtype_index != -1){
+            console.log(String(listVar.varType));
+            beg_table +=
+                '<tr><td>' + listVar.varName + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
+                //'</td><td>' + listVar.varSize +
+                 shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
+                '</td><td><button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \">s</button>' +
+                '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \">l</button>' +
+                '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \">r</button></td>' +
+                '</tr>';
+            }
+        });
+        var full_table = beg_table + '</table></div>';
+        //console.log(full_table)
+        return full_table;
         }
-        //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
-        //var jstr = listVar.varContent;
-        count += 1;
-        //var table_string = jstr.replace('\'', '\"');
-        beg_table +=
-            '<tr><td>' + String(count) + '</td><td>' + listVar.varName + '</td>' +
-            '<td>' + listVar.varContent +
-            '</td> <td><button onClick = \"Jupyter.notebook.events.trigger(\'importtable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:0}) \">import</button></td>' +
-            '</tr>';
-    });
-    var full_table = beg_table + '</table></div>';
-    //console.log(full_table)
-    return full_table;
-    }
+
+    // show returned tables
+    function html_data_table(jsonVars, mode) {
+        function _trunc(x, L) {
+            x = String(x)
+            if (x.length < L) return x
+            else return x.substring(0, L - 3) + '...'
+        }
+        var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
+        var kernel_config = cfg.kernels_config[kernelLanguage];
+        var varList = JSON.parse(String(jsonVars))
+        var kernel_id = String(Jupyter.notebook.kernel.id);
+        var shape_str = '';
+        var has_shape = false;
+        if (varList.some(listVar => "varShape" in listVar && listVar.varShape !== '')) { //if any of them have a shape
+            shape_str = '<th >Shape</th>';
+            has_shape = true;
+        }
+
+        if (mode === 1){
+            console.log('return result 1');
+            var beg_table = '<p><b>Similar Tables</b></p>';
+        }
+        else if (mode === 2){
+            console.log('return result 2');
+            var beg_table = '<p><b>Linkable Tables</b></p>';
+        }
+        else if (mode === 3){
+            console.log('return result 3');
+            var beg_table = '<p><b>Role Similar Tables</b></p>';
+        }
+
+        beg_table += '<div class=\"inspector\"><table class=\"table fixed table-condensed table-nonfluid \"><col /> \
+     <col  /><col /><thead><tr><th>Rank</th><th >Name</th>' + shape_str + '<th >Value</th><th>Operation</th></tr></thead><tr><td> \
+     </td></tr>';
+        var count = 0
+        varList.forEach(listVar => {
+            var shape_col_str = '</td><td>';
+            if (has_shape) {
+                shape_col_str = '</td><td>' + listVar.varShape + '</td><td>';
+            }
+            //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
+            //var jstr = listVar.varContent;
+            count += 1;
+            //var table_string = jstr.replace('\'', '\"');
+            beg_table +=
+                '<tr><td>' + String(count) + '</td><td>' + listVar.varName + '</td>' +
+                '<td>' + listVar.varContent +
+                '</td> <td><button onClick = \"Jupyter.notebook.events.trigger(\'importtable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:0}) \">import</button></td>' +
+                '</tr>';
+        });
+        var full_table = beg_table + '</table></div>';
+        //console.log(full_table)
+        return full_table;
+        }
 
 
     function code_exec_callback(msg) {
@@ -264,25 +265,25 @@ function html_data_table(jsonVars, mode) {
             notWellDefined = msg.content.evalue == "name 'var_dic_list' is not defined" || 
         msg.content.evalue.substr(0,28) == "Error in cat(var_dic_list())"
         //means that var_dic_list was cleared ==> need to retart the extension
-        if (notWellDefined) varInspector_init() 
-        else $('#varInspector').html(html_table(jsonVars))
+        if (notWellDefined) dataset_inspector_init() 
+        else $('#dataset_inspector').html(html_table(jsonVars))
         
-        requirejs(['nbextensions/varInspector/jquery.tablesorter.min'],
+        requirejs(['nbextensions/dataset_inspector/jquery.tablesorter.min'],
             function() {
-        setTimeout(function() { if ($('#varInspector').length>0)
-            $('#varInspector table').tablesorter()}, 50)
+        setTimeout(function() { if ($('#dataset_inspector').length>0)
+            $('#dataset_inspector table').tablesorter()}, 50)
         });
     }
 
     function tableSort(name) {
-        requirejs(['nbextensions/varInspector/jquery.tablesorter.min'])
+        requirejs(['nbextensions/dataset_inspector/jquery.tablesorter.min'])
         $('#var' + name + ' table').tablesorter()
     }
 
     var varRefresh = function() {
         var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
         var kernel_config = cfg.kernels_config[kernelLanguage];
-        requirejs(['nbextensions/varInspector/jquery.tablesorter.min'],
+        requirejs(['nbextensions/dataset_inspector/jquery.tablesorter.min'],
             function() {
                 Jupyter.notebook.kernel.execute(
                     kernel_config.varRefreshCmd, { iopub: { output: code_exec_callback } }, { silent: false }
@@ -295,7 +296,7 @@ function html_data_table(jsonVars, mode) {
         var var_name = data.var_name;
         var kid = data.kid;
 
-        var send_url = utils.url_path_join(Jupyter.notebook.base_url, '/stable');
+        var send_url = utils.url_path_join(Jupyter.notebook.base_url, '/juneau');
 
         var return_data = ""
         var return_state = ""
@@ -392,11 +393,11 @@ function html_data_table(jsonVars, mode) {
         });
     }
 
-    var varInspector_init = function() {
+    var dataset_inspector_init = function() {
         // Define code_init
         // read and execute code_init 
         function read_code_init(lib) {
-            var libName = Jupyter.notebook.base_url + "nbextensions/varInspector/" + lib;
+            var libName = Jupyter.notebook.base_url + "nbextensions/dataset_inspector/" + lib;
             $.get(libName).done(function(data) {
                 st.code_init = data;
                 st.code_init = st.code_init.replace('lenName', cfg.cols.lenName).replace('lenType', cfg.cols.lenType)
@@ -404,8 +405,8 @@ function html_data_table(jsonVars, mode) {
                         //.replace('types_to_exclude', JSON.stringify(cfg.types_to_exclude).replace(/\"/g, "'"))
                 requirejs(
                         [
-                            'nbextensions/varInspector/jquery.tablesorter.min'
-                            //'nbextensions/varInspector/colResizable-1.6.min'
+                            'nbextensions/dataset_inspector/jquery.tablesorter.min'
+                            //'nbextensions/dataset_inspector/colResizable-1.6.min'
                         ],
                         function() {
                             Jupyter.notebook.kernel.execute(st.code_init, { iopub: { output: code_exec_callback } }, { silent: false });
@@ -419,7 +420,7 @@ function html_data_table(jsonVars, mode) {
 
             // read configuration  
 
-            cfg = read_config('varInspector',cfg, function() {
+            cfg = read_config('dataset_inspector',cfg, function() {
             // Called when config is available
                 if (typeof Jupyter.notebook.kernel !== "undefined" && Jupyter.notebook.kernel !== null) {
                     var kernelLanguage = Jupyter.notebook.metadata.kernelspec.language.toLowerCase()
@@ -429,9 +430,9 @@ function html_data_table(jsonVars, mode) {
                             "Configurations are currently only defined for the following languages:\n" +
                             Object.keys(cfg.kernels_config).join(', ') + "\n" +
                             "See readme for more details.");
-                        if ($("#varInspector_button").length > 0) { // extension was present
-                            $("#varInspector_button").remove(); 
-                            $('#varInspector-wrapper').remove();
+                        if ($("#dataset_inspector_button").length > 0) { // extension was present
+                            $("#dataset_inspector_button").remove(); 
+                            $('#dataset_inspector-wrapper').remove();
                             // turn off events
                             events.off('execute.CodeCell', varRefresh); 
                             events.off('varRefresh', varRefresh);
@@ -439,7 +440,7 @@ function html_data_table(jsonVars, mode) {
                         }
                         return
                     }
-                    varInspector_button(); // In case button was removed 
+                    dataset_inspector_button(); // In case button was removed 
                     // read and execute code_init (if kernel is supported)
                     read_code_init(kernel_config.library);
                     // console.log("code_init-->", st.code_init)
@@ -460,8 +461,8 @@ function html_data_table(jsonVars, mode) {
         create_named_div(name, 'Search Results', cfg, st);
     }
 
-    var create_varInspector_div = function(cfg, st) {
-        create_named_div('varInspector', 'List All Tables (DataFrame/Array)', cfg, st);
+    var create_dataset_inspector_div = function(cfg, st) {
+        create_named_div('dataset_inspector', 'Juneau - Active Tables', cfg, st);
     }
 
     var create_named_div = function(name, title, cfg, st) {
@@ -475,7 +476,7 @@ function html_data_table(jsonVars, mode) {
                 'right': $('#' + name + '-wrapper').css('right')
             };
         }
-        var varInspector_wrapper = $('<div id="' + name + '-wrapper"/>')
+        var dataset_inspector_wrapper = $('<div id="' + name + '-wrapper"/>')
             .append(
                 $('<div id="' + name + '-header"/>')
                 .addClass("header")
@@ -487,7 +488,7 @@ function html_data_table(jsonVars, mode) {
                     .addClass("kill-btn")
                     .attr('title', 'Close window')
                     .click(function() {
-                        if(name === 'varInspector'){
+                        if(name === 'dataset_inspector'){
                             toggleVarInspector();
                         }
                         else{
@@ -502,7 +503,7 @@ function html_data_table(jsonVars, mode) {
                     $("<a/>")
                     .attr("href", "#")
                     .addClass("hide-btn")
-                    .attr('title', 'Hide ' + title)
+                    .attr('title', 'Hide Juneau')
                     .text("[-]")
                     .click(function() {
                         $('#' + name + '-wrapper').css('position', 'fixed');
@@ -537,7 +538,7 @@ function html_data_table(jsonVars, mode) {
                     .attr("href", "#")
                     .text("  \u21BB")
                     .addClass("reload-btn")
-                    .attr('title', 'Reload ' + title)
+                    .attr('title', 'Refresh Juneau')
                     .click(function() {
                         //variable_inspector(cfg,st); 
                         varRefresh();
@@ -554,7 +555,7 @@ function html_data_table(jsonVars, mode) {
                 $("<div/>").attr("id", name).addClass(name)
             )
 
-        $("body").append(varInspector_wrapper);
+        $("body").append(dataset_inspector_wrapper);
         // Ensure position is fixed
         $('#' + name + '-wrapper').css('position', 'fixed');
 
@@ -602,7 +603,7 @@ function html_data_table(jsonVars, mode) {
             if (Jupyter.notebook.metadata[name] !== undefined) {
                 if (Jupyter.notebook.metadata[name][name + '_section_display'] !== undefined) {
                     $('#' + name).css('display', Jupyter.notebook.metadata[name][name + '_section_display'])
-                    //$('#varInspector').css('height', $('#varInspector-wrapper').height() - $('#varInspector-header').height())
+                    //$('#dataset_inspector').css('height', $('#dataset_inspector-wrapper').height() - $('#dataset_inspector-header').height())
                     if (Jupyter.notebook.metadata[name][name + '_section_display'] == 'none') {
                         $('#' + name + '-wrapper').addClass('closed');
                         $('#' + name + '-wrapper').css({ height: 40 });
@@ -624,22 +625,22 @@ function html_data_table(jsonVars, mode) {
                     
                 }
             }
-        // if varInspector-wrapper is undefined (first run(?), then hide it)
+        // if dataset_inspector-wrapper is undefined (first run(?), then hide it)
         if ($('#' + name + '-wrapper').css('display') == undefined) $('#' + name + '-wrapper').css('display', "none") //block
 
-        varInspector_wrapper.addClass(name + '-float-wrapper');
+        dataset_inspector_wrapper.addClass(name + '-float-wrapper');
     }
 
     var variable_inspector = function(cfg, st) {
 
-        var varInspector_wrapper = $("#varInspector-wrapper");
-        if (varInspector_wrapper.length === 0) {
-            create_varInspector_div(cfg, st);
+        var dataset_inspector_wrapper = $("#dataset_inspector-wrapper");
+        if (dataset_inspector_wrapper.length === 0) {
+            create_dataset_inspector_div(cfg, st);
         }
 
         $(window).resize(function() {
-            $('#varInspector').css({ maxHeight: $(window).height() - 30 });
-            $('#varInspector-wrapper').css({ maxHeight: $(window).height() - 10 });
+            $('#dataset_inspector').css({ maxHeight: $(window).height() - 30 });
+            $('#dataset_inspector-wrapper').css({ maxHeight: $(window).height() - 10 });
         });
 
         $(window).trigger('resize');
@@ -648,9 +649,9 @@ function html_data_table(jsonVars, mode) {
 
     var search_inspector = function(cfg, st, name) {
 
-        var varInspector_wrapper = $("#" + name + "-wrapper");
+        var dataset_inspector_wrapper = $("#" + name + "-wrapper");
 
-        if (varInspector_wrapper.length === 0) {
+        if (dataset_inspector_wrapper.length === 0) {
             create_search_div(cfg, st, name);
         }
 
@@ -662,13 +663,13 @@ function html_data_table(jsonVars, mode) {
         $(window).trigger('resize');
     };
 
-    var toggle_varInspector = function(cfg, st) {
+    var toggle_dataset_inspector = function(cfg, st) {
         // toggle draw (first because of first-click behavior)
 
-        $("#varInspector-wrapper").toggle({
+        $("#dataset_inspector-wrapper").toggle({
             'progress': function() {},
             'complete': function() {
-                    Jupyter.notebook.metadata['varInspector']['window_display'] = $('#varInspector-wrapper').css('display') == 'block';
+                    Jupyter.notebook.metadata['dataset_inspector']['window_display'] = $('#dataset_inspector-wrapper').css('display') == 'block';
                     Jupyter.notebook.set_dirty();
                 // recompute:
                 variable_inspector(cfg, st);
@@ -691,19 +692,19 @@ function html_data_table(jsonVars, mode) {
 
     var load_jupyter_extension = function() {
         load_css(); //console.log("Loading css")
-        varInspector_button(); //console.log("Adding varInspector_button")
+        dataset_inspector_button(); //console.log("Adding dataset_inspector_button")
 
         // If a kernel is available, 
         if (typeof Jupyter.notebook.kernel !== "undefined" && Jupyter.notebook.kernel !== null) {
-            console.log(log_prefix + "Kernel is available -- varInspector initializing ")
-            varInspector_init();
+            console.log(log_prefix + "Kernel is available -- dataset_inspector initializing ")
+            dataset_inspector_init();
         }
         // if a kernel wasn't available, we still wait for one. Anyway, we will run this for new kernel 
         // (test if is is a Python kernel and initialize)
         // on kernel_ready.Kernel, a new kernel has been started and we shall initialize the extension
         events.on("kernel_ready.Kernel", function(evt, data) {
             console.log(log_prefix + "Kernel is available -- reading configuration");
-            varInspector_init();
+            dataset_inspector_init();
         });
     };
 

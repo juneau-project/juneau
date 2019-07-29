@@ -1,5 +1,5 @@
 
-.varInspector {
+.dataset_inspector {
   max-height: 500px;
   min-height: 100px;
   font-size: 80%;
@@ -11,7 +11,7 @@
   overflow-x: auto;
 } 
 
-.varInspector-float-wrapper {
+.dataset_inspector-float-wrapper {
   position: fixed !important;
   top: 120px;
   width:350px;
@@ -126,29 +126,29 @@
   margin-left: 14%;
   width: 80%}
 
-#varInspector-wrapper.closed {
+#dataset_inspector-wrapper.closed {
   min-width: 250px;
   width: auto;
   transition: width;
 }
-#varInspector-wrapper:hover{
+#dataset_inspector-wrapper:hover{
   opacity: 1;
 }
-#varInspector-wrapper .header {
+#dataset_inspector-wrapper .header {
   font-size: 16px;
   font-weight: bold;
 }
-#varInspector-wrapper .hide-btn {
+#dataset_inspector-wrapper .hide-btn {
   font-size: 14px;
   font-family: monospace;
 }
 
-#varInspector-wrapper .reload-btn {
+#dataset_inspector-wrapper .reload-btn {
   font-size: 14px;
   font-family: monospace;
 }
 
-#varInspector-wrapper .kill-btn {
+#dataset_inspector-wrapper .kill-btn {
   font-size: 14px;
   font-family: monospace;
 }
@@ -156,11 +156,11 @@
 
 
 /* don't waste so much screen space... */
-#varInspector-wrapper .toc-item{
+#dataset_inspector-wrapper .toc-item{
   padding-left: 20px;
 }
 
-#varInspector-wrapper .toc-item .toc-item{
+#dataset_inspector-wrapper .toc-item .toc-item{
   padding-left: 10px;
 }
 

@@ -1,5 +1,6 @@
 from notebook.utils import url_path_join
 from notebook.base.handlers import IPythonHandler
+from notebook.notebookapp import NotebookApp
 import json
 import sys
 import subprocess
@@ -20,27 +21,52 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
+from jinja2 import FileSystemLoader
+from traitlets import Unicode
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+
+HERE = os.path.dirname(__file__)
+
 import shutil
 
 import data_extension.config as cfg
 
 stdflag = False
 
-types_to_exclude = ['module', 'function', 'builtin_function_or_method', 'instance', '_Feature', 'type', 'ufunc']
+types_to_exclude = [ \
+    'module',  \
+    'function', \
+    'builtin_function_or_method', \
+    'instance', \
+    '_Feature', \
+    'type', \
+    'ufunc']
 
-types_to_include = ['ndarray', 'DataFrame', 'list']
+types_to_include = [ \
+    'ndarray', \
+    'DataFrame', \
+    'list']
 
-class HelloWorldHandler(IPythonHandler):
+class JuneauHandler(IPythonHandler):
 
-    #def __init__(self, application, request, **kwargs):
-    #    super().__init__(application, request, **kwargs)
+    def initialize(self):
+        logging.info('Juneau handler initializing')
     #    self.search_test_class = WithProv(dbname, 'rowstore')
 
     def find_variable(self):
 
         file_name = site.getsitepackages()[0] + '/data_extension/print_var.py'
-        msg_id = subprocess.Popen(['python', file_name, self.kernel_id, self.search_var],
-                                  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        try:
+            msg_id = subprocess.Popen(['python', file_name, \
+                                       self.kernel_id, self.search_var], \
+                                      stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        except FileNotFoundError:
+            msg_id = subprocess.Popen(['python3', file_name, \
+                                       self.kernel_id, self.search_var], \
+                                      stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
         output, error = msg_id.communicate()
 
@@ -51,12 +77,16 @@ class HelloWorldHandler(IPythonHandler):
 
         msg_id.stdout.close()
 
-        if error != "":
+        logging.info(output)
+        if error != "" or output == "" or output is None:
             sta = False
+            msg_id.stderr.close()
             return (sta, error)
         else:
             sta = True
+            logging.info('Parsing: ' + output)
             var_obj = pd.read_json(output, orient='split')
+            msg_id.stderr.close()
             return (sta, var_obj)
 
     def fetch_kernel_id(self):
@@ -80,6 +110,7 @@ class HelloWorldHandler(IPythonHandler):
         self.dbinfo['schema'] = cfg.sql_dbs#'rowstore'
 
     def get(self):
+        logging.info('Juneau handling search request')
         self.data = self.request.arguments
         self.fetch_search_var()
         self.fetch_kernel_id()
@@ -106,8 +137,8 @@ class HelloWorldHandler(IPythonHandler):
                     self.data_trans = {'res': data_json, 'state': str('false')}
                     self.write(json.dumps(self.data_trans))
             else:
-                print("The table can not be founded!")
-                print(output)
+                logging.error("The table was not found:")
+                logging.error(output)
                 self.data_trans = {'res':str(""), 'state':str('false')}
                 self.write(json.dumps(self.data_trans))
 
@@ -119,10 +150,10 @@ def load_jupyter_server_extension(nb_server_app):
         nb_server_app (NotebookWebApplication): handle to the Notebook webserver instance.
     """
     nb_server_app.log.info("Juneau extension loading...")
-    global search_test_class
-    search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)#dbname,'rowstore')
+    #global search_test_class
+    #search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)#dbname,'rowstore')
     web_app = nb_server_app.web_app
-    host_pattern = '.*$'
-    route_pattern = url_path_join(web_app.settings['base_url'], r'/stable')
-    web_app.add_handlers(host_pattern, [(route_pattern, HelloWorldHandler)])
-    nb_server_app.log.info("Juneau extension successfully loaded!")
+    host_pattern = r'.*$'
+    route_pattern = url_path_join(web_app.settings['base_url'], '/juneau')
+    web_app.add_handlers(host_pattern, [(route_pattern, JuneauHandler)])
+    nb_server_app.log.info("Juneau extension loaded!")

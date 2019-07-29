@@ -3,6 +3,8 @@ import jupyter_core.paths
 import uuid
 import time
 import tempfile
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 
 from jupyter_client import kernelspec
@@ -22,6 +24,7 @@ def main(kid, var):
     km.start_channels()
 
     code = "print(" + var + ".to_json(orient='split', index = False))"
+    logging.debug(code);
     km.execute_interactive(code, timeout = TIMEOUT)
     km.stop_channels()
 
