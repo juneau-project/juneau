@@ -3,15 +3,14 @@ from notebook.base.handlers import IPythonHandler
 from notebook.notebookapp import NotebookApp
 import json
 import sys
-import subprocess
 import pandas as pd
 import jupyter_core
 from jupyter_client import find_connection_file
 from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
 from ipython_genutils.path import filefind
 from data_extension.search import WithProv_Optimized
-import site
 from data_extension.search import search_tables
+import data_extension.jupyter
 #import data_extension.table_db
 #import ast_test
 import os
@@ -50,6 +49,9 @@ types_to_include = [ \
     'DataFrame', \
     'list']
 
+global done
+done = {}
+
 class JuneauHandler(IPythonHandler):
 
     def initialize(self):
@@ -58,35 +60,24 @@ class JuneauHandler(IPythonHandler):
 
     def find_variable(self):
 
-        file_name = site.getsitepackages()[0] + '/data_extension/print_var.py'
-        try:
-            msg_id = subprocess.Popen(['python', file_name, \
-                                       self.kernel_id, self.search_var], \
-                                      stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        except FileNotFoundError:
-            msg_id = subprocess.Popen(['python3', file_name, \
-                                       self.kernel_id, self.search_var], \
-                                      stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        # Make sure we have an engine connection for each kernel
+        if self.kernel_id not in done:
+            o2,err = data_extension.jupyter.exec_ipython( \
+                self.kernel_id, self.search_var, 'connect_psql')
+            done[self.kernel_id] = {}
+            logging.info(o2)
+            logging.info(err)
 
-        output, error = msg_id.communicate()
+        output, error = data_extension.jupyter.exec_ipython( \
+            self.kernel_id, self.search_var, 'print_var')
 
-        if sys.version[0] == '3':
-            output = output.decode("utf-8")
-            error = error.decode("utf-8")
-        output = output.strip('\n')
-
-        msg_id.stdout.close()
-
-        logging.info(output)
         if error != "" or output == "" or output is None:
             sta = False
-            msg_id.stderr.close()
             return (sta, error)
         else:
             sta = True
             logging.info('Parsing: ' + output)
             var_obj = pd.read_json(output, orient='split')
-            msg_id.stderr.close()
             return (sta, var_obj)
 
     def fetch_kernel_id(self):
@@ -156,7 +147,7 @@ def load_jupyter_server_extension(nb_server_app):
     """
     nb_server_app.log.info("Juneau extension loading...")
     global search_test_class
-    search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)#dbname,'rowstore')
+    search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
     web_app = nb_server_app.web_app
     host_pattern = r'.*$'
     route_pattern = url_path_join(web_app.settings['base_url'], '/juneau')

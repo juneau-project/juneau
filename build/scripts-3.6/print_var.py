@@ -24,34 +24,8 @@ def main(kid, var):
     km.start_channels()
 
     code = "print(" + var + ".to_json(orient='split', index = False))"
-    #logging.debug(code);
     km.execute_interactive(code, timeout = TIMEOUT)
     km.stop_channels()
-
-
-    #dirpath = tempfile.mkdtemp()
-
-#    code = var + ".to_csv(\'" + dirpath + '/' +var + ".csv\', index = False)"
-
-    #msg_id = km.execute(code, timeout=TIMEOUT)
-    #km.execute_interactive("whos", timeout=TIMEOUT)
-    #time.sleep(5)
-    #km.stop_channels()
-
-    #print(dirpath)
-    #print(var)
-
-    #return dirpath
-
-
-    #km.execute('%reset -f')
-    #msg_id = km.execute(code, timeout=TIMEOUT)
-
-    #km.execute_interactive(code, timeout = TIMEOUT)
-    #km.execute_interactive("whos", timeout=TIMEOUT)
-    #km.stop_channels()
-
-    #return
 
 if __name__ == "__main__":
    main(sys.argv[1], sys.argv[2])

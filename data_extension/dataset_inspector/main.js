@@ -486,10 +486,9 @@ define([
                     cell.execute();
                     var cell_id = Jupyter.notebook.get_selected_cells_indices()[0] + 1;
                     var rcell = Jupyter.notebook.insert_cell_below('code', cell_id);
-                    var running_code = 'from sqlalchemy import create_engine\nuser_name = \'yizhang\'\npassword = \'yizhang\'\ndbname = \'joinstore\'\n' +
-                        'def connect2db():\n\tengine = create_engine(\'postgresql://\' + user_name + \':\' + password + \'@localhost/\' + dbname)\n\treturn engine.connect()';
-                    execute_code(running_code, rcell);
-                    rcell.set_text('eng = connect2db()\ndf_new = pd.read_sql_table(\'' + var_name + '\', eng)\nprint(df_new)');
+
+                    rcell.set_text('eng = juneau_connect()\n' + var_name + '_df = pd.read_sql_table(\'' + var_name + '\', eng)\n' + var_name + '_df');
+                    rcell.execute();
                 }
                 else{
                     var print_string = 'print(\'the search table is not in this cell!\')';
