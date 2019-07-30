@@ -186,8 +186,6 @@ define([
             if (has_shape) {
                 shape_col_str = '</td><td>' + listVar.varShape + '</td><td><code>';
             }
-            //var djson = '{\'varname\':\'' + listVar.varName + '\'}';
-            //var jstr = listVar.varContent;
             var dtype_index = table_dataTypes.indexOf(String(listVar.varType));
             if (dtype_index != -1){
             console.log(String(listVar.varType));
@@ -195,9 +193,9 @@ define([
                 '<tr><td  class="table-one">' + listVar.varName + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
                 //'</td><td>' + listVar.varSize +
                  shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
-                '</code></td><td><button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \">s</button>' +
-                '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \">l</button>' +
-                '<button onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \">r</button></td>' +
+                '</code></td><td><button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \" alt="Similar">&#10504;</button>' +
+                '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \" alt="Linkable">&#10238;</button>' +
+                '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \" alt="Semantically related">&approxeq;</button></td>' +
                 '</tr>';
             }
         });
