@@ -193,7 +193,7 @@ define([
                 '<tr><td  class="table-one">' + listVar.varName + '</td><td>' + _trunc(listVar.varType, cfg.cols.lenType) +
                 //'</td><td>' + listVar.varSize +
                  shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
-                '</code></td><td><button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \" alt="Similar">&#10504;</button>' +
+                '</code></td><td><button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \" alt="Additional">&#10504;</button>' +
                 '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \" alt="Linkable">&#10238;</button>' +
                 '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \" alt="Semantically related">&approxeq;</button></td>' +
                 '</tr>';
@@ -267,7 +267,7 @@ define([
         if (mode === 1){
             console.log('return result 1');
             //var beg_table = '<p><b>Similar Tables</b></p>';
-            caption = 'Similar';
+            caption = 'Additional';
         }
         else if (mode === 2){
             console.log('return result 2');
