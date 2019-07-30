@@ -5,7 +5,7 @@ sql_dbname = "joinstore"
 sql_host = "localhost"
 sql_graph = "graph_model"
 sql_provenance = "nb_provenance"
-sql_dbs = "row_store"
+sql_dbs = "rowstore"
 
 neo_name = "neo4j"
 neo_password = "habitat1"

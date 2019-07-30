@@ -243,6 +243,7 @@ class WithProv:
         self.real_tables = {}
 
         if schema != None:
+            logging.info('Indexing existing tables from data lake')
             self.tables = fetch_all_table_names(schema, self.eng)
             for i in self.tables:
                 try:
@@ -253,6 +254,7 @@ class WithProv:
                 except:
                     continue
         else:
+            logging.info('Indexing views  from data lake')
             self.tables = fetch_all_views(self.eng)
             for i in self.tables:
                 try:
@@ -1564,6 +1566,7 @@ class WithProv_Optimized:
         self.real_tables = {}
 
         if schema != None:
+            logging.info('Indexing existing tables from data lake')
             self.tables = fetch_all_table_names(schema, self.eng)
             for i in self.tables:
                 try:
@@ -1574,6 +1577,7 @@ class WithProv_Optimized:
                 except:
                     continue
         else:
+            logging.info('Indexing views')
             self.tables = fetch_all_views(self.eng)
             for i in self.tables:
                 try:

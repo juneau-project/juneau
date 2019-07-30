@@ -2,14 +2,14 @@
 .dataset_inspector {
   max-height: 500px;
   min-height: 100px;
-  font-size: 80%;
+  font-size: 90%;
   padding: 0px;
   overflow-y: auto;
   font-weight: normal;
   color: #333333;
   white-space: nowrap;
   overflow-x: auto;
-} 
+}
 
 .dataset_inspector-float-wrapper {
   position: fixed !important;
@@ -30,7 +30,7 @@
 .searchResults1 {
   max-height: 500px;
   min-height: 100px;
-  font-size: 80%;
+  font-size: 90%;
   padding: 0px;
   overflow-y: auto;
   font-weight: normal;
@@ -57,7 +57,7 @@
 .searchResults2 {
   max-height: 500px;
   min-height: 100px;
-  font-size: 80%;
+  font-size: 90%;
   padding: 0px;
   overflow-y: auto;
   font-weight: normal;
@@ -84,7 +84,7 @@
 .searchResults3 {
   max-height: 500px;
   min-height: 100px;
-  font-size: 80%;
+  font-size: 90%;
   padding: 0px;
   overflow-y: auto;
   font-weight: normal;
@@ -111,14 +111,20 @@
 
 .hide-btn{
   float: right;
+  font-size: 16px;
+  font-family: monospace;
 }
 
 .reload-btn{
   float: right;
+  font-size: 16px;
+  font-family: monospace;
 }
 
 .kill-btn{
   float: right;
+  font-size: 16px;
+  font-family: monospace;
 }
 
 .col-md-9 {
@@ -135,25 +141,9 @@
   opacity: 1;
 }
 #dataset_inspector-wrapper .header {
-  font-size: 16px;
+  font-size: 16pt;
   font-weight: bold;
 }
-#dataset_inspector-wrapper .hide-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#dataset_inspector-wrapper .reload-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#dataset_inspector-wrapper .kill-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-
 
 /* don't waste so much screen space... */
 #dataset_inspector-wrapper .toc-item{
@@ -175,25 +165,9 @@
   opacity: 1;
 }
 #searchResults1-wrapper .header {
-  font-size: 16px;
+  font-size: 16pt;
   font-weight: bold;
 }
-#searchResults1-wrapper .hide-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#searchResults1-wrapper .reload-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#searchResults1-wrapper .kill-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-
 
 /* don't waste so much screen space... */
 #searchResults1-wrapper .toc-item{
@@ -214,22 +188,8 @@
   opacity: 1;
 }
 #searchResults2-wrapper .header {
-  font-size: 16px;
+  font-size: 16pt;
   font-weight: bold;
-}
-#searchResults2-wrapper .hide-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#searchResults2-wrapper .reload-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#searchResults2-wrapper .kill-btn {
-  font-size: 14px;
-  font-family: monospace;
 }
 
 
@@ -252,22 +212,8 @@
   opacity: 1;
 }
 #searchResults3-wrapper .header {
-  font-size: 16px;
+  font-size: 16pt;
   font-weight: bold;
-}
-#searchResults3-wrapper .hide-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#searchResults3-wrapper .reload-btn {
-  font-size: 14px;
-  font-family: monospace;
-}
-
-#searchResults3-wrapper .kill-btn {
-  font-size: 14px;
-  font-family: monospace;
 }
 
 
@@ -315,4 +261,12 @@ table.table {
   background-image: none;
   cursor: default;
   padding-right: 5px;
+}
+
+.button {
+  background-color: lightgray;
+  color: black;
+  border-style: outset;
+  padding-left: 4px;
+  padding-right: 4px;
 }

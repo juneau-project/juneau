@@ -11,6 +11,9 @@ https://dbappserv.cis.upenn.edu/home/?q=node/259
 
 ## Setup
 
+* Import Neo4J dump file using `neo4j-admin load --database=graph.db --from={loc} --force`
+* Import PostgreSQL dump using `psql -h localhost -u postgres < {psql dump}`
+
 * `sudo -H python setup.py install`
 * `sudo -H jupyter serverextension enable --py data_extension`
 * `jupyter nbextension install dataset_inspector/ --user`

@@ -54,7 +54,7 @@ class JuneauHandler(IPythonHandler):
 
     def initialize(self):
         logging.info('Juneau handler initializing')
-    #    self.search_test_class = WithProv(dbname, 'rowstore')
+        #self.search_test_class = WithProv(dbname, 'rowstore')
 
     def find_variable(self):
 
@@ -109,6 +109,11 @@ class JuneauHandler(IPythonHandler):
         self.dbinfo['pswd'] = cfg.sql_password#'yizhang'#self.settings['postgres_pswd']
         self.dbinfo['schema'] = cfg.sql_dbs#'rowstore'
 
+    def put(self):
+        logging.info('Juneau indexing request')
+        self.data_trans = {'res': "", 'state': str('true')}
+        self.write(json.dumps(self.data_trans))
+
     def get(self):
         logging.info('Juneau handling search request')
         self.data = self.request.arguments
@@ -150,8 +155,8 @@ def load_jupyter_server_extension(nb_server_app):
         nb_server_app (NotebookWebApplication): handle to the Notebook webserver instance.
     """
     nb_server_app.log.info("Juneau extension loading...")
-    #global search_test_class
-    #search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)#dbname,'rowstore')
+    global search_test_class
+    search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)#dbname,'rowstore')
     web_app = nb_server_app.web_app
     host_pattern = r'.*$'
     route_pattern = url_path_join(web_app.settings['base_url'], '/juneau')

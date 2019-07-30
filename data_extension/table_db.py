@@ -15,6 +15,7 @@ special_type = ['np', 'pd']
 def create_tables_as_needed(eng):
     eng.execute("create schema if not exists " + cfg.sql_dbs + ';')
     eng.execute("create schema if not exists " + cfg.sql_graph + ';')
+    eng.execute("create schema if not exists " + cfg.sql_provenance + ';')
 
     eng.execute("CREATE TABLE IF NOT EXISTS graph_model.dependen (" + \
                 "view_id character varying(1000)," + \
