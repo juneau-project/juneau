@@ -1,3 +1,4 @@
+@import url("https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.css")
 
 .dataset_inspector {
   max-height: 500px;
@@ -270,3 +271,4 @@ table.table {
   padding-left: 4px;
   padding-right: 4px;
 }
+

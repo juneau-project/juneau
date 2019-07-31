@@ -11,8 +11,23 @@ https://dbappserv.cis.upenn.edu/home/?q=node/259
 
 ## Setup
 
-* Import Neo4J dump file using `neo4j-admin load --database=graph.db --from={loc} --force`
-* Import PostgreSQL dump using `psql -h localhost -u postgres < {psql dump}`
+### Prerequisites: relational and graph databases
+
+First, be sure you have installed (1) PostgreSQL and (2) Neo4J.
+
+* Run `sudo -u postgres psql` and then enter `\password`.  Set a password for the account (by default this is assumed to be `habitat1`).
+* Open your browser to `localhost:7474` and change the password on the `neo4j` password, by default to `habitat1`.
+
+You can edit the settings in `config.py` to match your password and account info.
+
+### Sample data lake corpus
+
+Next, download sample_data.zip and unzip it.
+
+* `neo4j-admin load --database=graph.db --from=juneauG.dump --force`
+* `psql -h localhost -u postgres < juneauD.pgsql`
+
+### Install Jupyter Notebook extensions
 
 * `sudo -H python setup.py install`
 * `sudo -H jupyter serverextension enable --py data_extension`
