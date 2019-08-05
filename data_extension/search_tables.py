@@ -1,0 +1,343 @@
+from data_extension.table_db import connect2db, connect2gdb
+
+import copy
+import numpy as np
+import os
+import pandas as pd
+import pickle
+import logging
+from data_extension.table_db import fetch_all_table_names, fetch_all_views
+
+class SearchTables:
+    query = None
+    eng = None
+    geng = None
+    real_tables = []
+    already_map = []
+
+    def __init__(self, dbname, schema=None):
+        self.query = None
+        self.eng = connect2db(dbname)
+        self.geng = connect2gdb()
+
+        self.real_tables = {}
+
+        if schema:
+            logging.info('Indexing existing tables from data lake')
+            self.tables = fetch_all_table_names(schema, self.eng)
+            for i in self.tables:
+                try:
+                    table_r = pd.read_sql_table(i, self.eng, schema=schema)
+                    if 'Unnamed: 0' in table_r.columns:
+                        table_r.drop(['Unnamed: 0'], axis=1, inplace=True)
+                    self.real_tables[i] = table_r
+                except:
+                    continue
+        else:
+            logging.info('Indexing views from data lake')
+            self.tables = fetch_all_views(self.eng)
+            for i in self.tables:
+                try:
+                    table_r = pd.read_sql_table(i, self.eng)
+                    self.real_tables[i] = table_r
+                except:
+                    continue
+
+        logging.info('%s tables detected in the database.')
+
+        self.init_schema_mapping()
+
+    def __line2cid(self, dir):
+        nb_l2c = {}
+        files = os.listdir(dir)
+        for f in files:
+            ind = pickle.load(open(dir + "/" + f, "rb"))
+            nb_l2c[f[:-2]] = ind
+        return nb_l2c
+
+    def __col_similarity(self, tableA, tableB, SM, key_factor):
+
+        col_sim_upper = 1 + float(len(SM.keys()) - 1) * float(key_factor)
+        tableA_not_in_tableB = []
+        for kyA in tableA.columns.tolist():
+            if kyA not in SM:
+                tableA_not_in_tableB.append(kyA)
+        col_sim_lower = len(tableB.columns.values) + len(tableA_not_in_tableB)
+        col_sim = float(col_sim_upper) / float(col_sim_lower)
+        return col_sim
+
+    def __row_similarity(self, colA, colB):
+
+        colA_value = colA[~pd.isnull(colA)].values
+        colB_value = colB[~pd.isnull(colB)].values
+
+        row_sim_upper = len(np.intersect1d(colA_value, colB_value))
+        row_sim_lower = len(np.union1d(colA_value, colB_value))
+        row_sim = float(row_sim_upper) / float(row_sim_lower)
+        return row_sim
+
+    def __remove_dup(self, ranked_list, ks):
+        res = []
+        for i,j,l in ranked_list:
+            flg = True
+            for k,m in res:
+                if self.real_tables[i].equals(self.real_tables[k]):
+                    flg = False
+                    break
+            if flg == True:
+                res.append((i,l))
+
+            if len(res) == ks:
+                break
+        return res
+
+    def __dfs(self, snode):
+
+        cell_rel = self.geng.match_one((snode,), r_type = "Containedby")
+        cell_node = cell_rel.end_node
+        names = []
+        return_names = []
+        stack = [cell_node]
+        while(True):
+            if len(stack) != 0:
+                node = stack.pop()
+                names.append(node['name'])
+                for rel in self.geng.match((node, ), r_type = "Contains"):
+                    return_names.append(rel.end_node['name'])
+
+                for rel in self.geng.match((node, ), r_type="Successor"):
+                    if rel.end_node['name'] in names:
+                        continue
+                    else:
+                        stack.append(rel.end_node)
+
+                for rel in self.geng.match((node, ), r_type = "Parent"):
+                    if rel.end_node['name'] in names:
+                        continue
+                    else:
+                        stack.append(rel.end_node)
+            else:
+                break
+
+        return list(set(return_names))
+
+    def init_schema_mapping(self):
+        return
+
+    def app_common_key(self,tableA, tableB, SM, key, thres_prune): # thres_prune = 0.2
+
+        kyA = key
+        kyB = SM[key]
+        key_value_A = tableA[kyA].tolist()
+        key_value_B = tableB[kyB].tolist()
+
+        key_estimateA = float(len(set(key_value_A))) / float(len(key_value_A))
+        key_estimateB = float(len(set(key_value_B))) / float(len(key_value_B))
+        if min(key_estimateA, key_estimateB) <= thres_prune:
+            return 0
+
+#        other_key = list(SM.keys())
+#        other_key.remove(key)
+        mapped_keyA = list(SM.keys())
+
+        if kyA not in self.query_fd:
+            self.query_fd[kyA] = {}
+            for idv, kv in enumerate(key_value_A):
+                if kv not in self.query_fd[kyA]:
+                    self.query_fd[kyA][kv] = []
+                self.query_fd[kyA][kv].append(','.join(map(str, tableA[mapped_keyA].iloc[idv].tolist())))
+            fd = copy.deepcopy(self.query_fd[key])
+        else:
+            fd = copy.deepcopy(self.query_fd[key])
+
+        mapped_keyB = list(SM.values())
+        for idv, kv in enumerate(key_value_B):
+            if kv not in fd:
+                fd[kv] = []
+            fd[kv].append(','.join(map(str, tableB[mapped_keyB].iloc[idv].tolist())))
+
+        key_score = 0
+        for fdk in fd.keys():
+            key_score = key_score + float(len(set(fd[fdk]))) / float(tableA.shape[0] + tableB.shape[0])
+
+        return key_score
+
+    def comp_table_similarity_row(self, tableA, tableB, key, SM, sample_size):
+
+        value_setb = set(tableB[SM[key]].tolist())
+
+        sim_sum = 0
+        sim_count = 0
+        for idi, i in enumerate(tableA[key].tolist()):
+            if sim_count == sample_size:
+                break
+            if i in value_setb:
+                dfB = tableB.loc[tableB[SM[key]] == i]
+                sim_array = []
+                for index, row in dfB.iterrows():
+                    a = np.array(list(map(str, tableA.iloc[idi].tolist())))
+                    b = np.array(list(map(str, row.tolist())))
+                    # a = a[~pd.isnull(a)].values
+                    # b = b[~pd.isnull(b)].values
+                    try:
+                        sim_array.append(float(len(np.intersect1d(a, b))) / float(len(np.union1d(a, b))))
+                    except:
+                        print(a)
+                        print(b)
+                sim_array = np.array(sim_array)
+                sim_sum = sim_sum + np.mean(sim_array)
+                sim_count += 1
+        if sim_count == 0:
+            return 0
+        else:
+            return float(sim_sum) / float(sim_count)
+
+    def comp_table_similarity(self, tableA, tableB, beta, SM, gid, thres_key_prune, thres_key_cache):
+
+        key_choice = []
+        for kyA in SM.keys():
+            flg = False
+            if kyA in self.already_map[gid]:
+                determined = self.already_map[gid][kyA]
+                check_set = set(list(SM.values()))
+                for ds in determined:
+                    if ds.issubset(check_set):
+                        flg = True
+                        break
+                if flg:
+                    key_choice.append((kyA, self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)))
+                    break
+
+                else:
+                    key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
+                    key_choice.append((kyA, key_score))
+                    if key_score == 1:
+                        break
+            else:
+                key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
+                key_choice.append((kyA, key_score))
+
+        if len(key_choice) == 0:
+            return 0
+        else:
+            key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
+            key_chosen = key_choice[0][0]
+            key_factor = key_choice[0][1]
+
+            if key_factor >= thres_key_cache:
+                if key_chosen not in self.already_map[gid]:
+                    self.already_map[gid][key_chosen] = []
+                self.already_map[gid][key_chosen].append(set(list(SM.values())))
+
+            row_sim = self.__row_similarity(tableA[key_chosen], tableB[SM[key_chosen]])
+            col_sim = self.__col_similarity(tableA, tableB, SM, key_factor)
+
+            return beta * col_sim + float(1 - beta) * row_sim
+
+    def comp_table_joinable(self, tableA, tableB, beta, SM, gid, thres_key_prune, thres_key_cache):
+
+        key_choice = []
+        for kyA in SM.keys():
+            flg = False
+            if kyA in self.already_map[gid]:
+                determined = self.already_map[gid][kyA]
+                check_set = set(list(SM.values()))
+                for ds in determined:
+                    if ds.issubset(check_set):
+                        flg = True
+                        break
+                if flg:
+                    key_choice.append((kyA, self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)))
+                    break
+
+                else:
+                    key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
+                    key_choice.append((kyA, key_score))
+                    if key_score == 1:
+                        break
+            else:
+                key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
+                key_choice.append((kyA, key_score))
+
+        key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
+        key_chosen = key_choice[0][0]
+        key_factor = key_choice[0][1]
+
+        if key_factor >= thres_key_cache:
+            if key_chosen not in self.already_map[gid]:
+                self.already_map[gid][key_chosen] = []
+            self.already_map[gid][key_chosen].append(set(list(SM.values())))
+
+        row_sim = self.__row_similarity(tableA[key_chosen], tableB[SM[key_chosen]])
+
+        col_sim_upper = 1 + float(len(tableA.columns.values) - 1) * float(key_factor)
+        tableA_not_in_tableB = []
+        for kyA in tableA.columns.tolist():
+            if kyA not in SM:
+                tableA_not_in_tableB.append(kyA)
+        col_sim_lower = len(tableB.columns.values) + len(tableA_not_in_tableB)
+        col_sim = float(col_sim_upper) / float(col_sim_lower)
+
+        col_sim_upper2 = 1 + float(len(tableB.columns.values) - 1) * float(key_factor)
+        col_sim2 = float(col_sim_upper2) / float(col_sim_lower)
+
+        score1 = beta * col_sim + float(1 - beta) * row_sim
+        score2 = beta * col_sim2 + float(1 - beta) * row_sim
+
+        return max(score1, score2)
+
+    def app_join_key(self, tableA, tableB, SM, key, thres_prune):
+
+        kyA = key
+        key_value_A = tableA[key].tolist()
+        scoreA = float(len(set(key_value_A)))/float(len(key_value_A))
+        if scoreA == 1:
+            return 1
+
+        kyB = SM[key]
+        key_value_B = tableB[kyB].tolist()
+        scoreB = float(len(set(key_value_B)))/float(len(key_value_B))
+        if scoreB == 1:
+            return 1
+
+        if min(scoreA, scoreB) < thres_prune:
+            return 0
+
+
+        mapped_keyA = list(SM.keys())
+
+        if kyA not in self.query_fd:
+            self.query_fd[kyA] = {}
+            for idv, kv in enumerate(key_value_A):
+                if kv not in self.query_fd[kyA]:
+                    self.query_fd[kyA][kv] = []
+                self.query_fd[kyA][kv].append(','.join(map(str, tableA[mapped_keyA].iloc[idv].tolist())))
+            fd = copy.deepcopy(self.query_fd[key])
+        else:
+            fd = copy.deepcopy(self.query_fd[key])
+
+        mapped_keyB = list(SM.values())
+        for idv, kv in enumerate(key_value_B):
+            if kv in fd:
+                fd[kv].append(','.join(map(str, tableB[mapped_keyB].iloc[idv].tolist())))
+
+        key_scoreAB = 0
+        for fdk in fd.keys():
+            key_scoreAB += float(len(set(fd[fdk]))) / float(tableA.shape[0] + tableB.shape[0])
+
+        temp_fd = {}
+        for idv, kv in enumerate(key_value_B):
+            if kv not in temp_fd:
+                temp_fd[kv] = []
+            temp_fd[kv].append(','.join(map(str, tableB[mapped_keyB].iloc[idv].tolist())))
+
+        for idv, kv in enumerate(key_value_A):
+            if kv in temp_fd:
+                temp_fd[kv].append(','.join(map(str, tableA[mapped_keyA].iloc[idv].tolist())))
+
+        key_scoreBA = 0
+        for fdk in temp_fd.keys():
+            key_scoreBA += float(len(set(temp_fd[fdk]))) / float(tableA.shape[0] + tableB.shape[0])
+
+        return max(key_scoreAB, key_scoreBA)
+

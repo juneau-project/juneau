@@ -5,7 +5,7 @@ import json
 import threading
 import pandas as pd
 
-from data_extension.search import WithProv_Optimized
+from data_extension.search_withprov_opt import WithProv_Optimized
 from data_extension.search import search_tables
 import data_extension.jupyter
 

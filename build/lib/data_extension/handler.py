@@ -5,7 +5,7 @@ import json
 import threading
 import pandas as pd
 
-from data_extension.search import WithProv_Optimized
+from data_extension.search_withprov_opt import WithProv_Optimized
 from data_extension.search import search_tables
 import data_extension.jupyter
 
@@ -55,7 +55,7 @@ class JuneauHandler(IPythonHandler):
     data_trans = {}
 
     def initialize(self):
-        logging.info('Juneau handler initializing')
+        logging.info('Calling Juneau handler...')
         # self.search_test_class = WithProv(dbname, 'rowstore')
 
     def find_variable(self):
