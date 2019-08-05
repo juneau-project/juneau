@@ -1,14 +1,8 @@
 import sys
-import jupyter_core.paths
-import uuid
-import time
-import tempfile
 import logging
-import data_extension.config as cfg
+import config as cfg
 logging.basicConfig(level=logging.INFO)
 
-
-from jupyter_client import kernelspec
 
 from jupyter_client import find_connection_file
 from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient

@@ -1,17 +1,14 @@
 from notebook.utils import url_path_join
 from notebook.base.handlers import IPythonHandler
-from notebook.notebookapp import NotebookApp
+
 import json
 import threading
-import sys
 import pandas as pd
-import jupyter_core
-from jupyter_client import find_connection_file
-from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
-from ipython_genutils.path import filefind
+
 from data_extension.search import WithProv_Optimized
 from data_extension.search import search_tables
 import data_extension.jupyter
+
 #import data_extension.table_db
 #import ast_test
 import os
