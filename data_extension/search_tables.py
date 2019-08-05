@@ -43,11 +43,11 @@ class SearchTables:
                 except:
                     continue
 
-        logging.info('%s tables detected in the database.')
+        logging.info('%s tables detected in the database.'%len(self.real_tables.keys()))
 
         self.init_schema_mapping()
 
-    def __line2cid(self, dir):
+    def line2cid(self, dir):
         nb_l2c = {}
         files = os.listdir(dir)
         for f in files:
@@ -55,7 +55,7 @@ class SearchTables:
             nb_l2c[f[:-2]] = ind
         return nb_l2c
 
-    def __col_similarity(self, tableA, tableB, SM, key_factor):
+    def col_similarity(self, tableA, tableB, SM, key_factor):
 
         col_sim_upper = 1 + float(len(SM.keys()) - 1) * float(key_factor)
         tableA_not_in_tableB = []
@@ -66,7 +66,7 @@ class SearchTables:
         col_sim = float(col_sim_upper) / float(col_sim_lower)
         return col_sim
 
-    def __row_similarity(self, colA, colB):
+    def row_similarity(self, colA, colB):
 
         colA_value = colA[~pd.isnull(colA)].values
         colB_value = colB[~pd.isnull(colB)].values
@@ -76,7 +76,7 @@ class SearchTables:
         row_sim = float(row_sim_upper) / float(row_sim_lower)
         return row_sim
 
-    def __remove_dup(self, ranked_list, ks):
+    def remove_dup(self, ranked_list, ks):
         res = []
         for i,j,l in ranked_list:
             flg = True
@@ -91,7 +91,7 @@ class SearchTables:
                 break
         return res
 
-    def __dfs(self, snode):
+    def dfs(self, snode):
 
         cell_rel = self.geng.match_one((snode,), r_type = "Containedby")
         cell_node = cell_rel.end_node
@@ -229,8 +229,8 @@ class SearchTables:
                     self.already_map[gid][key_chosen] = []
                 self.already_map[gid][key_chosen].append(set(list(SM.values())))
 
-            row_sim = self.__row_similarity(tableA[key_chosen], tableB[SM[key_chosen]])
-            col_sim = self.__col_similarity(tableA, tableB, SM, key_factor)
+            row_sim = self.row_similarity(tableA[key_chosen], tableB[SM[key_chosen]])
+            col_sim = self.col_similarity(tableA, tableB, SM, key_factor)
 
             return beta * col_sim + float(1 - beta) * row_sim
 
@@ -268,7 +268,7 @@ class SearchTables:
                 self.already_map[gid][key_chosen] = []
             self.already_map[gid][key_chosen].append(set(list(SM.values())))
 
-        row_sim = self.__row_similarity(tableA[key_chosen], tableB[SM[key_chosen]])
+        row_sim = self.row_similarity(tableA[key_chosen], tableB[SM[key_chosen]])
 
         col_sim_upper = 1 + float(len(tableA.columns.values) - 1) * float(key_factor)
         tableA_not_in_tableB = []
@@ -285,6 +285,43 @@ class SearchTables:
         score2 = beta * col_sim2 + float(1 - beta) * row_sim
 
         return max(score1, score2)
+
+    def comp_table_joinable_key(self, SM_test, tableA, tableB, beta, SM, gid, meta_mapping, schema_linking, thres_key_prune, unmatched):
+
+        key_choice = []
+        for kyA in SM.keys():
+            key_score = self.app_join_key(tableA, tableB, SM, kyA, thres_key_prune)
+            key_choice.append((kyA, key_score))
+
+        if len(key_choice) == 0:
+            return 0, meta_mapping, unmatched, 0, None
+        else:
+            key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
+            key_chosen = key_choice[0][0]
+            key_factor = key_choice[0][1]
+
+            SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(tableA, tableB, gid,
+                                                                                          meta_mapping, schema_linking,
+                                                                                          unmatched,
+                                                                                          mapped=SM)  # SM_test.mapping_naive(tableA, tableB, SM)
+
+            col_sim_upper = 1 + float(len(tableA.columns.values) - 1) * float(key_factor)
+            tableA_not_in_tableB = []
+            for kyA in tableA.columns.tolist():
+                if kyA not in SM_real:
+                    tableA_not_in_tableB.append(kyA)
+            col_sim_lower = len(tableB.columns.values) + len(tableA_not_in_tableB) - 1
+            col_sim = float(col_sim_upper) / float(col_sim_lower)
+
+            col_sim_upper2 = 1 + float(len(tableB.columns.values) - 1) * float(key_factor)
+            col_sim2 = float(col_sim_upper2) / float(col_sim_lower)
+
+            row_sim = self.row_similarity(tableA[key_chosen], tableB[SM_real[key_chosen]])
+
+            score1 = beta * col_sim + float(1 - beta) * row_sim
+            score2 = beta * col_sim2 + float(1 - beta) * row_sim
+
+            return max(score1, score2), meta_mapping, unmatched, sm_time, key_chosen
 
     def app_join_key(self, tableA, tableB, SM, key, thres_prune):
 
@@ -341,3 +378,49 @@ class SearchTables:
 
         return max(key_scoreAB, key_scoreBA)
 
+    def comp_table_similarity_key(self, SM_test, tableA, tableB, beta, SM, gid, meta_mapping, schema_linking, thres_key_prune, thres_key_cache, unmatched):
+
+        key_choice = []
+        for kyA in SM.keys():
+            flg = False
+            if kyA in self.already_map[gid]:
+                determined = self.already_map[gid][kyA]
+                check_set = set(list(SM.values()))
+                for ds in determined:
+                    if ds.issubset(check_set):
+                        flg = True
+                        break
+                if flg:
+                    key_choice.append((kyA, self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)))
+                    break
+
+                else:
+                    key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
+                    key_choice.append((kyA, key_score))
+                    if key_score == 1:
+                        break
+            else:
+                key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
+                key_choice.append((kyA, key_score))
+
+        if len(key_choice) == 0:
+            #for i in tableA.columns.tolist():
+            #    for j in tableB.columns.tolist():
+            #        unmatched[gid][i][schema_linking[gid][j]] = ''
+            return 0, meta_mapping, unmatched, 0, None
+        else:
+            key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
+            key_chosen = key_choice[0][0]
+            key_factor = key_choice[0][1]
+
+            if key_factor >= thres_key_cache:
+                if key_chosen not in self.already_map[gid]:
+                    self.already_map[gid][key_chosen] = []
+                self.already_map[gid][key_chosen].append(set(list(SM.values())))
+
+            SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped=SM) #SM_test.mapping_naive(tableA, tableB, SM)
+
+            row_sim = self.row_similarity(tableA[key_chosen], tableB[SM_real[key_chosen]])
+            col_sim = self.col_similarity(tableA, tableB, SM_real, key_factor)
+
+            return beta * col_sim + float(1 - beta) * row_sim, meta_mapping, unmatched, sm_time, key_chosen

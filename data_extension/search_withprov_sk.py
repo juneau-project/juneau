@@ -42,7 +42,7 @@ class WithProv_Sk(SearchTables):
     #     col_sim = float(col_sim_upper) / float(col_sim_lower)
     #     return col_sim
     #
-    # def __remove_dup(self, ranked_list, ks):
+    # def remove_dup(self, ranked_list, ks):
     #     res = []
     #     for i, j in ranked_list:
     #         flg = True
@@ -95,7 +95,7 @@ class WithProv_Sk(SearchTables):
         for i in self.real_tables.keys():
             if i[6:] not in set(tables_touched):
                 current_node = matcher.match("Var", name=i[6:]).first()
-                connected_tables = self.__dfs(current_node)
+                connected_tables = self.dfs(current_node)
                 tables_touched = tables_touched + connected_tables
                 tables_connected.append(connected_tables)
 
@@ -290,7 +290,7 @@ class WithProv_Sk(SearchTables):
         if len(topk_tables) < k:
             k = len(topk_tables)
 
-        rtables_names = self.__remove_dup(topk_tables, k)
+        rtables_names = self.remove_dup(topk_tables, k)
 
         if tflag == True:
             print('Schema Mapping Cost: ', time1 + time2)
@@ -416,7 +416,7 @@ class WithProv_Sk(SearchTables):
             print('Schema Mapping Cost: ', time1)
             print('Totally Cost: ', time3)
 
-        rtables_names = self.__remove_dup(top_tables, ks)
+        rtables_names = self.remove_dup(top_tables, ks)
 
         rtables = []
         for i in rtables_names:
@@ -608,7 +608,7 @@ class WithProv_Sk(SearchTables):
             print('Schema Mapping Cost: ', time1)
             print('Totally Cost: ', time3)
 
-        rtables_names = self.__remove_dup(top_tables, ks)
+        rtables_names = self.remove_dup(top_tables, ks)
 
         rtables = []
         for i in rtables_names:
@@ -666,7 +666,7 @@ class WithProv_Sk(SearchTables):
         if len(topk_tables) < k:
             k = len(topk_tables)
 
-        rtables_names = self.__remove_dup(topk_tables, k)
+        rtables_names = self.remove_dup(topk_tables, k)
 
         if tflag == True:
             print('Schema Mapping Cost: ', time1 + time2)
@@ -789,7 +789,7 @@ class WithProv_Sk(SearchTables):
         end_time1 = timeit.default_timer()
         time3 = end_time1 - start_time1
 
-        rtables_names = self.__remove_dup(top_tables, k)
+        rtables_names = self.remove_dup(top_tables, k)
 
         if tflag == True:
             print('Schema Mapping Cost: ', time1)

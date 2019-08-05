@@ -1,27 +1,22 @@
 from py2neo import NodeMatcher
-import os
 import pandas as pd
 import numpy as np
-import pickle
-import copy
 import json
 import random
 import timeit
 import networkx as nx
 
-from data_extension.table_db import connect2gdb, connect2db
-from data_extension.table_db import fetch_all_table_names, fetch_all_views
 from data_extension.schemamapping import SchemaMapping
-from data_extension.search import SearchProv
 from data_extension.search import special_type
 from data_extension.search_tables import SearchTables
+from data_extension.search_withprov import WithProv
 import data_extension.config as cfg
 
 import logging
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
-class WithProv_Optimized(SearchTables):
+class WithProv_Optimized(WithProv):
 
     def read_graph_of_notebook(self):
         Graphs = {}
@@ -105,62 +100,6 @@ class WithProv_Optimized(SearchTables):
 
         return G
 
-    # def __col_similarity(self, tableA, tableB, SM, key_factor):
-    #
-    #     col_sim_upper = 1 + float(len(SM.keys()) - 1) * float(key_factor)
-    #     tableA_not_in_tableB = []
-    #     for kyA in tableA.columns.tolist():
-    #         if kyA not in SM:
-    #             tableA_not_in_tableB.append(kyA)
-    #     col_sim_lower = len(tableB.columns.values) + len(tableA_not_in_tableB)
-    #     col_sim = float(col_sim_upper) / float(col_sim_lower)
-    #     return col_sim
-    #
-    # def __remove_dup(self, ranked_list, ks):
-    #     res = []
-    #     for i,j,l in ranked_list:
-    #         flg = True
-    #         for k,m in res:
-    #             if self.real_tables[i].equals(self.real_tables[k]):
-    #                 flg = False
-    #                 break
-    #         if flg == True:
-    #             res.append((i,l))
-    #
-    #         if len(res) == ks:
-    #             break
-    #     return res
-    #
-    # def __dfs(self, snode):
-    #
-    #     cell_rel = self.geng.match_one((snode,), r_type = "Containedby")
-    #     cell_node = cell_rel.end_node
-    #     names = []
-    #     return_names = []
-    #     stack = [cell_node]
-    #     while(True):
-    #         if len(stack) != 0:
-    #             node = stack.pop()
-    #             names.append(node['name'])
-    #             for rel in self.geng.match((node, ), r_type = "Contains"):
-    #                 return_names.append(rel.end_node['name'])
-    #
-    #             for rel in self.geng.match((node, ), r_type="Successor"):
-    #                 if rel.end_node['name'] in names:
-    #                     continue
-    #                 else:
-    #                     stack.append(rel.end_node)
-    #
-    #             for rel in self.geng.match((node, ), r_type = "Parent"):
-    #                 if rel.end_node['name'] in names:
-    #                     continue
-    #                 else:
-    #                     stack.append(rel.end_node)
-    #         else:
-    #             break
-    #
-    #     return list(set(return_names))
-
     def init_schema_mapping(self):
 
         matcher = NodeMatcher(self.geng)
@@ -170,7 +109,7 @@ class WithProv_Optimized(SearchTables):
         for i in self.real_tables.keys():
             if i[6:] not in set(tables_touched):
                 current_node = matcher.match("Var", name = i[6:]).first()
-                connected_tables = self.__dfs(current_node)
+                connected_tables = super().dfs(current_node)
                 tables_touched = tables_touched + connected_tables
                 tables_connected.append(connected_tables)
 
@@ -285,98 +224,17 @@ class WithProv_Optimized(SearchTables):
 
     def __init__(self, dbname, schema = None):
         super().__init__(dbname, schema)
-        # self.query = None
-        # self.eng = connect2db(dbname)
-        # self.geng = connect2gdb()
-        #
-        # self.real_tables = {}
-        #
-        # if schema != None:
-        #     logging.info('Indexing existing tables from data lake')
-        #     self.tables = fetch_all_table_names(schema, self.eng)
-        #     for i in self.tables:
-        #         try:
-        #             tableR = pd.read_sql_table(i, self.eng, schema = schema)
-        #             if 'Unnamed: 0' in tableR.columns:
-        #                 tableR.drop(['Unnamed: 0'], axis=1, inplace=True)
-        #             self.real_tables[i] = tableR
-        #         except:
-        #             continue
-        # else:
-        #     logging.info('Indexing views')
-        #     self.tables = fetch_all_views(self.eng)
-        #     for i in self.tables:
-        #         try:
-        #             tableR = pd.read_sql_table(i, self.eng)
-        #             self.real_tables[i] = tableR
-        #         except:
-        #             continue
-        #
-        # logging.info('%s tables detected in the database.'%len(self.real_tables.keys()))
-        #
-        # self.init_schema_mapping()
+
+        self.index()
+
+        logging.info('Data Search Extension Prepared!')
+
+    def index(self):
         self.sample_schema()
         self.sketch_meta_mapping()
         logging.info('Reading Graph of Notebooks.')
         self.Graphs, self.n_l2cid = self.read_graph_of_notebook()
         #self.n_l2cid = self.__line2cid('/Users/yizhang/PycharmProjects/sig_demo/nb_data_extension/notebook_data_extension/data_extension/related_table_lcid')
-
-        logging.info('Data Search Extension Prepared!')
-
-    # def app_join_key(self, tableA, tableB, SM, key, thres_prune):
-    #
-    #     kyA = key
-    #     key_value_A = tableA[key].tolist()
-    #     scoreA = float(len(set(key_value_A)))/float(len(key_value_A))
-    #     if scoreA == 1:
-    #         return 1
-    #
-    #     kyB = SM[key]
-    #     key_value_B = tableB[kyB].tolist()
-    #     scoreB = float(len(set(key_value_B)))/float(len(key_value_B))
-    #     if scoreB == 1:
-    #         return 1
-    #
-    #     if min(scoreA, scoreB) < thres_prune:
-    #         return 0
-    #
-    #
-    #     mapped_keyA = list(SM.keys())
-    #
-    #     if kyA not in self.query_fd:
-    #         self.query_fd[kyA] = {}
-    #         for idv, kv in enumerate(key_value_A):
-    #             if kv not in self.query_fd[kyA]:
-    #                 self.query_fd[kyA][kv] = []
-    #             self.query_fd[kyA][kv].append(','.join(map(str, tableA[mapped_keyA].iloc[idv].tolist())))
-    #         fd = copy.deepcopy(self.query_fd[key])
-    #     else:
-    #         fd = copy.deepcopy(self.query_fd[key])
-    #
-    #     mapped_keyB = list(SM.values())
-    #     for idv, kv in enumerate(key_value_B):
-    #         if kv in fd:
-    #             fd[kv].append(','.join(map(str, tableB[mapped_keyB].iloc[idv].tolist())))
-    #
-    #     key_scoreAB = 0
-    #     for fdk in fd.keys():
-    #         key_scoreAB += float(len(set(fd[fdk]))) / float(tableA.shape[0] + tableB.shape[0])
-    #
-    #     temp_fd = {}
-    #     for idv, kv in enumerate(key_value_B):
-    #         if kv not in temp_fd:
-    #             temp_fd[kv] = []
-    #         temp_fd[kv].append(','.join(map(str, tableB[mapped_keyB].iloc[idv].tolist())))
-    #
-    #     for idv, kv in enumerate(key_value_A):
-    #         if kv in temp_fd:
-    #             temp_fd[kv].append(','.join(map(str, tableA[mapped_keyA].iloc[idv].tolist())))
-    #
-    #     key_scoreBA = 0
-    #     for fdk in temp_fd.keys():
-    #         key_scoreBA += float(len(set(temp_fd[fdk]))) / float(tableA.shape[0] + tableB.shape[0])
-    #
-    #     return max(key_scoreAB, key_scoreBA)
 
     def schema_mapping(self, tableA, tableB, meta_mapping, gid):
         s_mapping = {}
@@ -395,7 +253,7 @@ class WithProv_Optimized(SearchTables):
         max_valueL = []
         for i in s_mapping.keys():
             j = s_mapping[i]
-            max_valueL.append(self.__row_similarity(tableA[i], tableB[j]))
+            max_valueL.append(self.row_similarity(tableA[i], tableB[j]))
 
         if len(max_valueL) > 0:
             mv = max(max_valueL)
@@ -404,89 +262,6 @@ class WithProv_Optimized(SearchTables):
 
         return s_mapping, mv
 
-    # def comp_table_similarity_key(self, SM_test, tableA, tableB, beta, SM, gid, meta_mapping, schema_linking, thres_key_prune, thres_key_cache, unmatched):
-    #
-    #     key_choice = []
-    #     for kyA in SM.keys():
-    #         flg = False
-    #         if kyA in self.already_map[gid]:
-    #             determined = self.already_map[gid][kyA]
-    #             check_set = set(list(SM.values()))
-    #             for ds in determined:
-    #                 if ds.issubset(check_set):
-    #                     flg = True
-    #                     break
-    #             if flg:
-    #                 key_choice.append((kyA, self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)))
-    #                 break
-    #
-    #             else:
-    #                 key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
-    #                 key_choice.append((kyA, key_score))
-    #                 if key_score == 1:
-    #                     break
-    #         else:
-    #             key_score = self.app_common_key(tableA, tableB, SM, kyA, thres_key_prune)
-    #             key_choice.append((kyA, key_score))
-    #
-    #     if len(key_choice) == 0:
-    #         #for i in tableA.columns.tolist():
-    #         #    for j in tableB.columns.tolist():
-    #         #        unmatched[gid][i][schema_linking[gid][j]] = ''
-    #         return 0, meta_mapping, unmatched, 0, None
-    #     else:
-    #         key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
-    #         key_chosen = key_choice[0][0]
-    #         key_factor = key_choice[0][1]
-    #
-    #         if key_factor >= thres_key_cache:
-    #             if key_chosen not in self.already_map[gid]:
-    #                 self.already_map[gid][key_chosen] = []
-    #             self.already_map[gid][key_chosen].append(set(list(SM.values())))
-    #
-    #         SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped=SM) #SM_test.mapping_naive(tableA, tableB, SM)
-    #
-    #         row_sim = self.__row_similarity(tableA[key_chosen], tableB[SM_real[key_chosen]])
-    #         col_sim = self.__col_similarity(tableA, tableB, SM_real, key_factor)
-    #
-    #         return beta * col_sim + float(1 - beta) * row_sim, meta_mapping, unmatched, sm_time, key_chosen
-    #
-    # def comp_table_joinable_key(self, SM_test, tableA, tableB, beta, SM, gid, meta_mapping, schema_linking, thres_key_prune, unmatched):
-    #
-    #     key_choice = []
-    #     for kyA in SM.keys():
-    #         key_score = self.app_join_key(tableA, tableB, SM, kyA, thres_key_prune)
-    #         key_choice.append((kyA, key_score))
-    #
-    #     if len(key_choice) == 0:
-    #         return 0, meta_mapping, unmatched, 0, None
-    #     else:
-    #         key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
-    #         key_chosen = key_choice[0][0]
-    #         key_factor = key_choice[0][1]
-    #
-    #         SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(tableA, tableB, gid,
-    #                                                                                       meta_mapping, schema_linking,
-    #                                                                                       unmatched,
-    #                                                                                       mapped=SM)  # SM_test.mapping_naive(tableA, tableB, SM)
-    #
-    #         col_sim_upper = 1 + float(len(tableA.columns.values) - 1) * float(key_factor)
-    #         tableA_not_in_tableB = []
-    #         for kyA in tableA.columns.tolist():
-    #             if kyA not in SM_real:
-    #                 tableA_not_in_tableB.append(kyA)
-    #         col_sim_lower = len(tableB.columns.values) + len(tableA_not_in_tableB) - 1
-    #         col_sim = float(col_sim_upper) / float(col_sim_lower)
-    #
-    #         col_sim_upper2 = 1 + float(len(tableB.columns.values) - 1) * float(key_factor)
-    #         col_sim2 = float(col_sim_upper2) / float(col_sim_lower)
-    #
-    #         row_sim = self.__row_similarity(tableA[key_chosen], tableB[SM_real[key_chosen]])
-    #
-    #         score1 = beta * col_sim + float(1 - beta) * row_sim
-    #         score2 = beta * col_sim2 + float(1 - beta) * row_sim
-    #
-    #         return max(score1, score2), meta_mapping, unmatched, sm_time, key_chosen
 
     def search_similar_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag = False):
 
@@ -628,7 +403,7 @@ class WithProv_Optimized(SearchTables):
         logging.info("Schema Mapping Costs: %s Seconds"%time1)
         logging.info("Full Search Costs: %s Seconds"%time3)
 
-        rtables_names = self.__remove_dup(top_tables, ks)
+        rtables_names = self.remove_dup(top_tables, ks)
 
         rtables = []
         for i,j in rtables_names:
@@ -763,7 +538,7 @@ class WithProv_Optimized(SearchTables):
         end_time1 = timeit.default_timer()
         time3 = end_time1 - start_time1
 
-        rtables_names = self.__remove_dup(top_tables, k)
+        rtables_names = self.remove_dup(top_tables, k)
 
         logging.info('Schema Mapping Costs: %s Seconds'%time1)
         logging.info('Full Search Costs:%s Seconds'%time3)
@@ -774,25 +549,4 @@ class WithProv_Optimized(SearchTables):
             rtables.append((i, self.real_tables[i]))
 
         return rtables
-
-    def search_role_sim_tables(self, query, k):
-        test_class = SearchProv(self.Graphs)
-        table_names = test_class.search_topk(query,k)
-        table_names = [t.split('_') for t in table_names]
-        db_name = {}
-        for t in table_names:
-            nid = t[-1]
-            vname = '_'.join(t[1:-2])
-            cid = str(self.n_l2cid[nid][t[-2]])
-            db_name[nid + ";" + vname + ";" + cid] = ""
-        db_return = []
-        for t in self.real_tables.keys():
-            temp = t[6:].split('_')
-            cid = str(temp[0])
-            nid = str(temp[-1])
-            vname = str('_'.join(temp[1:-2]))
-            sname = nid + ";" + vname + ";" + cid
-            if sname in db_name:
-                db_return.append((t, self.real_tables[t]))
-        return db_return
 
