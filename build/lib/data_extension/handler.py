@@ -2,6 +2,7 @@ from notebook.utils import url_path_join
 from notebook.base.handlers import IPythonHandler
 from notebook.notebookapp import NotebookApp
 import json
+import threading
 import sys
 import pandas as pd
 import jupyter_core
@@ -59,7 +60,7 @@ class JuneauHandler(IPythonHandler):
         #self.search_test_class = WithProv(dbname, 'rowstore')
 
     def find_variable(self):
-
+        logging.info('Looking for ' + self.search_var)
         # Make sure we have an engine connection for each kernel
         if self.kernel_id not in done:
             o2,err = data_extension.jupyter.exec_ipython( \
@@ -106,6 +107,11 @@ class JuneauHandler(IPythonHandler):
         self.write(json.dumps(self.data_trans))
 
     def get(self):
+        if not search_test_class:
+            self.data_trans = {'res': {'status': 'The Juneau server is still initializing'}, 'state': str('false')}
+            self.write(json.dumps(self.data_trans))
+            return
+
         logging.info('Juneau handling search request')
         self.data = self.request.arguments
         self.fetch_search_var()
@@ -138,6 +144,11 @@ class JuneauHandler(IPythonHandler):
                 self.data_trans = {'res':str(""), 'state':str('false')}
                 self.write(json.dumps(self.data_trans))
 
+def background_load(nb_server_app):
+    global search_test_class
+    search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
+    nb_server_app.log.info("Juneau tables indexed...")
+
 def load_jupyter_server_extension(nb_server_app):
     """
     Called when the extension is loaded.
@@ -147,9 +158,13 @@ def load_jupyter_server_extension(nb_server_app):
     """
     nb_server_app.log.info("Juneau extension loading...")
     global search_test_class
-    search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
+    search_test_class = None
+    #search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
+    loader = threading.Thread(target=background_load, args=(nb_server_app,))
     web_app = nb_server_app.web_app
     host_pattern = r'.*$'
     route_pattern = url_path_join(web_app.settings['base_url'], '/juneau')
     web_app.add_handlers(host_pattern, [(route_pattern, JuneauHandler)])
     nb_server_app.log.info("Juneau extension loaded!")
+    loader.start()
+
