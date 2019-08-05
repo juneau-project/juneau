@@ -2,9 +2,11 @@ import subprocess
 import sys
 import site
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 
 import sys
+
 
 # Execute via IPython kernel
 def exec_ipython(kernel_id, search_var, py_file):

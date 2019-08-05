@@ -418,11 +418,12 @@ define([
                 cell_code = cell_code + cells[i].get_text() + '\n';
             }
         }
-        var data_json = {'var': var_name, 'kid':kid, 'mode': mode, 'code':cell_code};
+        var data_json = {'var': var_name, 'kid':kid, 'mode': mode, 'code':cell_code,
+                            "_xsrf": getCookie("_xsrf")};
 
         $.ajax({
             url: send_url,
-            type: 'GET',
+            type: 'POST',
             data: data_json,
             dataType: 'json',
             timeout: 100000,
@@ -438,6 +439,8 @@ define([
                     $('#searchResults' + String(mode)).html(html_data_table(print_string, mode));
                     $('#searchResults' + String(mode) + '-wrapper').css('display', 'block');
                     //$('#' + name + '-wrapper').css('display', Jupyter.notebook.metadata['searchResults' + String(mode)]['window_display'] ? 'block' : 'block');
+                } else if (response['error']) {
+                    alert(response['error']);
                 }
                 else{
                     var print_string = 'print(\'No table returned!\')';
