@@ -407,6 +407,176 @@ class WithProv_Optimized(WithProv):
 
         return rtables
 
+    def search_alternative_features(self, query, k, code, var_name, alpha, beta, theta, thres_key_prune, thres_key_cache):
+
+        # choose only top possible key columns
+        query_col = self.sketch_query_cols(query)
+
+        #introduce the schema mapping class
+        SM_test = SchemaMapping()
+        #do partial schema mapping
+        partial_mapping = SM_test.mapping_naive_tables(query, query_col, self.schema_element_sample_col, self.schema_element_dtype)
+
+        unmatched = {}
+        for i in partial_mapping.keys():
+            unmatched[i] = {}
+            for j in query.columns.tolist():
+                unmatched[i][j] = {}
+                if (j in query_col) and (j not in partial_mapping[i]):
+                    for l in self.schema_element[i].keys():
+                        unmatched[i][j][l] = ""
+
+        self.query_fd = {}
+        self.already_map = {}
+        for i in self.schema_linking.keys():
+            self.already_map[i] = {}
+
+        prov_class = SearchProv(self.Graphs)
+        query_node = self.__generate_query_node_from_code(var_name, code)
+
+        table_prov_rank = prov_class.search_score_rank(query_node)
+        table_prov_score = {}
+        for i, j in table_prov_rank:
+            if i[:3] != "var":
+                continue
+
+            t = i.split("_")
+
+            nid = t[-1]
+
+            if (nid not in self.n_l2cid):
+                print("notebook" + str(nid) + " does not exist")
+
+            vname = '_'.join(t[1:-2])
+
+            if (t[-2] not in self.n_l2cid[nid]):
+                continue
+
+            cid = int(self.n_l2cid[nid][t[-2]])
+
+            table_prov_score["rtable" + str(cid) + "_" + vname.lower() + "_" + str(nid)] = j
+
+        top_tables = []
+        rank_candidate = []
+        rank2 = []
+
+        for i in self.real_tables.keys():
+            tname = i
+
+            if tname not in table_prov_score:
+                continue
+            else:
+                gid = self.table_group[tname[6:]]
+                if gid not in partial_mapping:
+                    continue
+
+                tableS = query
+                tableR = self.real_tables[i]
+
+                SM, ms = self.schema_mapping(tableS, tableR, partial_mapping, gid)
+
+                if len(SM.items()) == 0:
+                    continue
+
+                tableSnotintableR = []
+                for sk in tableS.columns.tolist():
+                    if sk not in SM:
+                        tableSnotintableR.append(sk)
+
+                upper_bound_col_score1 = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
+
+                upper_bound_col_score =  (upper_bound_col_score1 + float(min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1) \
+                               / float(len(tableR.columns.values) + len(tableSnotintableR) - 1))
+
+                upper_bound_row_score = ms
+
+                rank2.append(float(beta) * upper_bound_col_score + float(alpha) * upper_bound_row_score)
+
+                rank_candidate.append((tname, float(1)/float(table_prov_score[tname] + 1), SM))
+
+        rank2 = sorted(rank2, reverse=True)
+        rank_candidate = sorted(rank_candidate, key=lambda d: d[1], reverse=True)
+
+        if len(rank_candidate) == 0:
+            return []
+
+        if len(rank_candidate) > k:
+            ks = k
+        else:
+            ks = len(rank_candidate)
+
+        for i in range(ks):
+            tableR = self.real_tables[rank_candidate[i][0]]
+            gid = self.table_group[rank_candidate[i][0][6:]]
+            SM_real = rank_candidate[i][2]
+
+            col_sim, row_sim, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test, query,
+                                                                                                 tableR, SM_real,
+                                                                                                 gid, partial_mapping,
+                                                                                                 self.schema_linking,
+                                                                                                 thres_key_prune,
+                                                                                                 thres_key_cache,
+                                                                                                 unmatched)
+
+            score = float(beta) * (col_sim) + float(alpha) * row_sim + float( 1 - beta - alpha) * rank_candidate[i][1]
+
+            top_tables.append((rank_candidate[i][0], score, key_chosen))
+
+
+        top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
+        min_value = top_tables[-1][1]
+
+        ks = ks - 1
+        id = 0
+        while (True):
+
+            if ks + id >= len(rank_candidate):
+                break
+
+            threshold = float(1 - beta - alpha) * rank_candidate[ks + id][1] + float(1 - beta) * rank2[ks+id]
+
+            if threshold <= min_value * theta:
+                break
+            else:
+                id = id + 1
+                if ks + id >= len(rank_candidate):
+                    break
+
+                tableR = self.real_tables[rank_candidate[ks + id][0]]
+                gid = self.table_group[rank_candidate[ks + id][0][6:]]
+                SM_real = rank_candidate[ks + id][2]
+                col_sim, row_sim, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test,
+                                                                                                                query,
+                                                                                                                tableR,
+                                                                                                                SM_real,
+                                                                                                                gid,
+                                                                                                                partial_mapping,
+                                                                                                                self.schema_linking,
+                                                                                                                thres_key_prune,
+                                                                                                                thres_key_cache,
+                                                                                                                unmatched)
+                new_score = float(beta) * (1 - row_sim) + float(alpha) * col_sim + float(1 - beta - alpha) * \
+                                                                               rank_candidate[i][1]
+
+                if new_score <= min_value:
+                    continue
+                else:
+                    top_tables.append((rank_candidate[ks + id][0], new_score, key_chosen))
+                    top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
+                    min_value = top_tables[ks][1]
+
+        #logging.info("Schema Mapping Costs: %s Seconds" % time1)
+        #logging.info("Full Search Costs: %s Seconds" % time3)
+
+        rtables_names = self.remove_dup(top_tables, ks)
+
+        rtables = []
+        for i, j in rtables_names:
+            rtables.append((i, self.real_tables[i]))
+
+        return rtables
+
+
     def search_similar_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag = False):
 
         self.query = query

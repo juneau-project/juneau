@@ -393,7 +393,7 @@ class SearchTables:
 
         return max(key_scoreAB, key_scoreBA)
 
-    def comp_table_similarity_key(self, SM_test, tableA, tableB, beta, SM, gid, meta_mapping, schema_linking, thres_key_prune, thres_key_cache, unmatched):
+    def comp_table_similarity_key(self, SM_test, tableA, tableB, SM, gid, meta_mapping, schema_linking, thres_key_prune, thres_key_cache, unmatched):
 
         key_choice = []
         for kyA in SM.keys():
@@ -438,4 +438,4 @@ class SearchTables:
             row_sim = self.row_similarity(tableA[key_chosen], tableB[SM_real[key_chosen]])
             col_sim = self.col_similarity(tableA, tableB, SM_real, key_factor)
 
-            return beta * col_sim + float(1 - beta) * row_sim, meta_mapping, unmatched, sm_time, key_chosen
+            return col_sim, row_sim, meta_mapping, unmatched, sm_time, key_chosen
