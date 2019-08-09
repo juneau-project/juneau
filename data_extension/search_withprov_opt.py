@@ -24,6 +24,38 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 class WithProv_Optimized(WithProv):
 
+    def approximate_join_key(self, tableA, tableB, SM, key, thres_prune):
+
+        kyA = key
+        key_value_A = tableA[key].tolist()
+        scoreA = float(len(set(key_value_A))) / float(len(key_value_A))
+        if scoreA == 1:
+            return 1
+
+        kyB = SM[key]
+        key_value_B = tableB[kyB].tolist()
+        scoreB = float(len(set(key_value_B))) / float(len(key_value_B))
+        if scoreB == 1:
+            return 1
+
+        if min(scoreA, scoreB) < thres_prune:
+            return 0
+
+        count_valueA = []
+        for v in key_value_A:
+            if v in key_value_B:
+                count_valueA.append(v)
+
+        count_valueB = []
+        for v in key_value_B:
+            if v in key_value_A:
+                count_valueB.append(v)
+
+        key_scoreAB = float(len(set(count_valueA)))/float(len(count_valueA))
+        key_scoreBA = float(len(set(count_valueB)))/float(len(count_valueB))
+
+        return max(key_scoreAB, key_scoreBA)
+
     def read_graph_of_notebook(self):
         Graphs = {}
         dependency = pd.read_sql_table('dependen', self.eng, cfg.sql_graph)#, schema='graph_model')
@@ -576,6 +608,79 @@ class WithProv_Optimized(WithProv):
 
         return rtables
 
+    def search_joinable_data(self, query, k, thres_key_prune):
+
+        # choose only top possible key columns
+        query_col = self.sketch_query_cols(query)
+
+        #introduce the schema mapping class
+        SM_test = SchemaMapping(sim_thres = 0.6)
+        #do partial schema mapping
+        partial_mapping = SM_test.mapping_naive_tables(query, query_col, self.schema_element_sample_col, self.schema_element_dtype)
+
+        unmatched = {}
+        for i in self.schema_linking.keys():
+            unmatched[i] = {}
+            for j in query.columns.tolist():
+                unmatched[i][j] = {}
+
+        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(query, query_col, \
+                                                                    self.schema_element_sample_col, \
+                                                                    self.schema_element_sample_row, \
+                                                                    self.schema_element_dtype, unmatched)
+        logging.info("meta mapping finished!")
+
+        rank_candidate = []
+
+        for i in self.real_tables.keys():
+
+            tname = i
+            gid = self.table_group[tname[6:]]
+            if gid not in meta_mapping:
+                continue
+
+            tableS = query
+            tableR = self.real_tables[i]
+
+            SM,ms = self.schema_mapping(tableS, tableR, meta_mapping, gid)
+
+            if len(SM.items()) == 0:
+                continue
+
+            key_choice = []
+            for kyA in SM.keys():
+                key_score = self.approximate_join_key(query, tableR, SM, kyA, thres_key_prune)
+                key_choice.append((kyA, key_score))
+
+            if len(key_choice) == 0:
+                continue
+            else:
+                key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
+                key_factor = key_choice[0][1]
+
+            rank_candidate.append((tname, key_factor))
+
+        rank_candidate = sorted(rank_candidate, key=lambda d: d[1], reverse=True)
+
+        if len(rank_candidate) == 0:
+            return []
+
+        if len(rank_candidate) > k:
+            ks = k
+        else:
+            ks = len(rank_candidate)
+
+
+        rtables_names = self.__remove_dup2(rank_candidate, k)
+
+        #logging.info('Schema Mapping Costs: %s Seconds'%time1)
+        #logging.info('Full Search Costs:%s Seconds'%time3)
+
+        rtables = []
+        for i in rtables_names:
+            rtables.append((i, self.real_tables[i]))
+
+        return rtables
 
     def search_similar_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag = False):
 
