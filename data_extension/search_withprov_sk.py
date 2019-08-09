@@ -10,7 +10,7 @@ from data_extension.table_db import connect2gdb, connect2db
 from data_extension.table_db import fetch_all_table_names, fetch_all_views
 from data_extension.schemamapping import SchemaMapping
 from data_extension.schemamapping_sk import SchemaMapping_SK
-from data_extension.search import SearchProv
+from data_extension.search_prov_code import SearchProv
 from data_extension.search_tables import SearchTables
 import data_extension.config as cfg
 

@@ -10,6 +10,12 @@ from data_extension.schemamapping import SchemaMapping
 from data_extension.search import special_type
 from data_extension.search_tables import SearchTables
 from data_extension.search_withprov import WithProv
+from data_extension.search_prov_code import SearchProv
+from data_extension.table_db import generate_graph
+from data_extension.table_db import parse_code
+from data_extension.table_db import pre_vars
+from data_extension.table_db import last_line_var
+
 import data_extension.config as cfg
 
 import logging
@@ -22,8 +28,6 @@ class WithProv_Optimized(WithProv):
         Graphs = {}
         dependency = pd.read_sql_table('dependen', self.eng, cfg.sql_graph)#, schema='graph_model')
         line2cid = pd.read_sql_table('line2cid', self.eng, cfg.sql_graph)#, schema='graph_model')
-        #print(dependency)
-        #print(line2cid)
 
         dependency_store = {}
         line2cid_store = {}
@@ -32,17 +36,24 @@ class WithProv_Optimized(WithProv):
             dependency_store[row['view_id']] = json.loads(row['view_cmd'])
         for index, row in line2cid.iterrows():
             line2cid_store[row['view_id']] = json.loads(row['view_cmd'])
-        #print(dependency_store)
-        #print(line2cid_store)
 
         for nid in dependency_store.keys():
             Graph = self.__generate_graph(nid, dependency_store[nid], line2cid_store[nid])
             #print(Graph)
             Graphs[nid] = Graph
-        #print(Graphs)
-        #print(line2cid_store)
+
         return Graphs, line2cid_store
 
+    def __generate_query_node_from_code(self, var_name, code):
+        code = '\n'.join([t for t in code.split('\\n') if len(t)> 0 and t[0]!='%'])
+        code = '\''.join(code.split('\\\''))
+
+        line_id = last_line_var(var_name, code)
+        dependency = parse_code(code)
+        graph = generate_graph(dependency)
+        query_name = 'var_' + var_name + '_' + str(line_id)
+        query_node = pre_vars(query_name, graph)
+        return query_node
 
     def __generate_graph(self, nid, dependency, line2cid):
         G = nx.DiGraph()
@@ -156,26 +167,26 @@ class WithProv_Optimized(WithProv):
 
         logging.info('There are %s groups of tables.'%len(tables_connected))
 
-    def sample_schema(self, col_size = 100):
+    def sample_rows_for_each_column(self, row_size = 1000):
         self.schema_element_sample_row = {}
         for i in self.schema_element.keys():
             self.schema_element_sample_row[i] = {}
             for sc in self.schema_element[i].keys():
-                if len(self.schema_element[i][sc]) < col_size:
+                if len(self.schema_element[i][sc]) < row_size:
                     self.schema_element_sample_row[i][sc] = self.schema_element[i][sc]
                 else:
-                    self.schema_element_sample_row[i][sc] = random.sample(self.schema_element[i][sc],col_size)
+                    self.schema_element_sample_row[i][sc] = random.sample(self.schema_element[i][sc],row_size)
 
-    def sketch_meta_mapping(self, sz = 10, col_size =100):
+    def sketch_column_and_row_for_meta_mapping(self, sz = 5, row_size =1000):
         self.schema_element_sample_col = {}
         for i in self.schema_element.keys():
             self.schema_element_sample_col[i] = {}
             if len(self.schema_element[i].keys()) <= sz:
                 for sc in self.schema_element[i].keys():
-                    if len(self.schema_element[i][sc]) < col_size:
+                    if len(self.schema_element[i][sc]) < row_size:
                         self.schema_element_sample_col[i][sc] = self.schema_element[i][sc]
                     else:
-                        self.schema_element_sample_col[i][sc] = random.sample(self.schema_element[i][sc], col_size)
+                        self.schema_element_sample_col[i][sc] = random.sample(self.schema_element[i][sc], row_size)
             else:
                 sc_choice = []
                 for sc in self.schema_element[i].keys():
@@ -191,14 +202,14 @@ class WithProv_Optimized(WithProv):
                 for sc,v in sc_choice:
                     if count == sz:
                         break
-                    if len(self.schema_element[i][sc]) < col_size:
+                    if len(self.schema_element[i][sc]) < row_size:
                         self.schema_element_sample_col[i][sc] = self.schema_element[i][sc]
                     else:
-                        self.schema_element_sample_col[i][sc] = random.sample(self.schema_element[i][sc], col_size)
+                        self.schema_element_sample_col[i][sc] = random.sample(self.schema_element[i][sc], row_size)
 
                     count += 1
 
-    def sketch_query_cols(self, query, sz = 10):
+    def sketch_query_cols(self, query, sz = 5):
         if query.shape[1] <= sz:
             return query.columns.tolist()
         else:
@@ -230,11 +241,10 @@ class WithProv_Optimized(WithProv):
         logging.info('Data Search Extension Prepared!')
 
     def index(self):
-        self.sample_schema()
-        self.sketch_meta_mapping()
+        self.sample_rows_for_each_column()
+        self.sketch_column_and_row_for_meta_mapping()
         logging.info('Reading Graph of Notebooks.')
         self.Graphs, self.n_l2cid = self.read_graph_of_notebook()
-        #self.n_l2cid = self.__line2cid('/Users/yizhang/PycharmProjects/sig_demo/nb_data_extension/notebook_data_extension/data_extension/related_table_lcid')
 
     def schema_mapping(self, tableA, tableB, meta_mapping, gid):
         s_mapping = {}
@@ -262,6 +272,140 @@ class WithProv_Optimized(WithProv):
 
         return s_mapping, mv
 
+    def search_additional_training_data(self, query, k, code, var_name, beta, theta):
+
+        #introduce the schema mapping class
+        SM_test = SchemaMapping()
+
+        #choose only top possible key columns
+        query_col_valid = self.sketch_query_cols(query)
+
+        #do partial schema mapping
+        partial_mapping = SM_test.mapping_naive_tables(query, query_col_valid, self.schema_element_sample_col, self.schema_element_dtype)
+
+        unmatched = {}
+        for i in partial_mapping.keys():
+            unmatched[i] = {}
+            for j in query.columns.tolist():
+                unmatched[i][j] = {}
+                if (j in query_col_valid) and (j not in partial_mapping[i]):
+                    for l in self.schema_element[i].keys():
+                        unmatched[i][j][l] = ""
+
+        prov_class = SearchProv(self.Graphs)
+        query_node = self.__generate_query_node_from_code(var_name, code)
+        table_prov_rank = prov_class.search_score_rank(query_node)
+        table_prov_score = {}
+
+        for i, j in table_prov_rank:
+            if i[:3] != "var":
+                continue
+
+            t = i.split("_")
+
+            nid = t[-1]
+
+            if(nid not in self.n_l2cid):
+                print("notebook" + str(nid) + " does not exist")
+
+            vname = '_'.join(t[1:-2])
+
+            if(t[-2] not in self.n_l2cid[nid]):
+                continue
+
+            cid = int(self.n_l2cid[nid][t[-2]])
+
+            table_prov_score["rtable" + str(cid) + "_" + vname.lower() + "_" + str(nid)] = j
+
+        top_tables = []
+        rank_candidate = []
+        rank2 = []
+
+        for i in self.real_tables.keys():
+            tname = i
+            if tname not in table_prov_score:
+                continue
+            else:
+                gid = self.table_group[tname[6:]]
+                if gid not in partial_mapping:
+                    continue
+
+                tableS = query
+                tableR = self.real_tables[i]
+                SM, ms = self.schema_mapping(tableS, tableR, partial_mapping, gid)
+                rank_candidate.append((tname, table_prov_score[tname], SM))
+
+                upp_col_sim = float(min(tableS.shape[1], tableR.shape[1])) / float(max(tableS.shape[1], tableR.shape[1]))
+                rank2.append(upp_col_sim)
+
+        rank_candidate = sorted(rank_candidate, key=lambda d: d[1], reverse=True)
+        rank2 = sorted(rank2, reverse=True)
+
+        if len(rank_candidate) == 0:
+            return []
+
+        if len(rank_candidate) > k:
+            ks = k
+        else:
+            ks = len(rank_candidate)
+
+        for i in range(ks):
+
+            tableS = query
+            tableR = self.real_tables[rank_candidate[i][0]]
+            gid = self.table_group[rank_candidate[i][0][6:]]
+            SM_real = rank_candidate[i][2]
+            SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(query, tableR, gid, partial_mapping, self.schema_linking, unmatched, mapped=SM_real)
+            score = float(beta) * self.col_similarity(tableS, tableR, SM_real, 1) + float(1 - beta) * rank_candidate[i][1]
+            top_tables.append((rank_candidate[i][0], score))
+
+        top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
+
+        min_value = top_tables[-1][1]
+
+        ks = ks - 1
+        id = 0
+        while (True):
+            if ks + id >= len(rank_candidate):
+                break
+
+            threshold = float(beta) * rank2[ks + id] + float( 1 - beta) * rank_candidate[ks + id][1]
+
+            if threshold <= min_value * theta:
+                break
+            else:
+                id = id + 1
+                if ks + id >= len(rank_candidate):
+                    break
+
+                tableR = self.real_tables[rank_candidate[ks + id][0]]
+                gid = self.table_group[rank_candidate[ks + id][0][6:]]
+                SM_real = rank_candidate[ks + id][2]
+                SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(query, tableR, gid,
+                                                                                              partial_mapping,
+                                                                                              self.schema_linking,
+                                                                                              unmatched, mapped=SM_real)
+
+                new_score = float(beta) * self.col_similarity(query, tableR, SM_real, 1) + float(1-beta)*rank_candidate[i][1]
+
+                if new_score <= min_value:
+                    continue
+                else:
+                    top_tables.append((rank_candidate[ks + id][0], new_score))
+                    top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
+                    min_value = top_tables[ks][1]
+
+
+        #logging.info("Schema Mapping Costs: %s Seconds" % time1)
+        #logging.info("Full Search Costs: %s Seconds" % time3)
+
+        rtables_names = self.remove_dup2(top_tables, ks)
+
+        rtables = []
+        for i in rtables_names:
+            rtables.append((i, self.real_tables[i]))
+
+        return rtables
 
     def search_similar_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag = False):
 

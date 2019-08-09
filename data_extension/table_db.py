@@ -107,6 +107,17 @@ def fetch_all_views(eng):
             #for cand_node in candidate_list.__iter__():
             #    candidate = cand_node
 
+def last_line_var(varname, code):
+    code = code.split('\n')
+    ret = 0
+    for id, i in enumerate(code):
+        if '=' not in i:
+            continue
+        j = i.split('=')
+        if varname in j[0]:
+            ret = id + 1
+    return ret
+
 def parse_code(all_code):
 
     test = FuncLister()

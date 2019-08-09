@@ -3,7 +3,7 @@ import numpy as np
 import timeit
 
 from data_extension.schemamapping import SchemaMapping
-from data_extension.search import SearchProv
+from data_extension.search_prov_code import SearchProv
 from data_extension.search_tables import SearchTables
 
 import logging

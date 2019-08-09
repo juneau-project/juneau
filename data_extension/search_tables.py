@@ -91,6 +91,21 @@ class SearchTables:
                 break
         return res
 
+    def remove_dup2(self, ranked_list, ks):
+        res = []
+        for i,j in ranked_list:
+            flg = True
+            for k in res:
+                if self.real_tables[i].equals(self.real_tables[k]):
+                    flg = False
+                    break
+            if flg == True:
+                res.append(i)
+
+            if len(res) == ks:
+                break
+        return res
+
     def dfs(self, snode):
 
         cell_rel = self.geng.match_one((snode,), r_type = "Containedby")
