@@ -370,8 +370,22 @@ define([
         var return_data = ""
         var return_state = ""
 
-        var cells = Jupyter.notebook.get_cells()
-        var data_json = {'var': var_name,
+        var cells = Jupyter.notebook.get_cells();
+        var clen = Jupyter.notebook.get_selected_cells_indices()[0];
+        var nb_name = Jupyter.notebook.notebook_path + Jupyter.notebook.notebook_name;
+        var kernel_id = Jupyter.notebook.kernel.id;
+
+        var i;
+        var cell_code = "";
+        var cell_id_count = 0;
+        for (i = 0; i < clen; i++) {
+            if(cells[i].cell_type === 'code'){
+                cell_code = cell_code + cells[i].get_text() + '\n\n';
+                cell_id_count = cell_id_count + 1;
+            }
+        }
+        console.log(cell_code);
+        var data_json = {'var': var_name, 'code':cell_code, 'nb_name':nb_name, 'cell_id':cell_id_count, 'kid':kernel_id,
                             "_xsrf": getCookie("_xsrf")};
 
         $.ajax({

@@ -8,6 +8,12 @@ import pandas as pd
 from data_extension.search_withprov_opt import WithProv_Optimized
 from data_extension.search import search_tables
 import data_extension.jupyter
+from data_extension.table_db import connect2gdb
+from data_extension.table_db import connect2db
+import data_extension.config as cfg
+from data_extension.store_graph import Store_Provenance
+from data_extension.store_prov import Store_Lineage
+
 
 import os
 import sys
@@ -53,31 +59,41 @@ class JuneauHandler(IPythonHandler):
     dbinfo = {}
     data = {}
     data_trans = {}
+    graph_db = None
+    psql_db = None
+    store_graph_db_class = None
+    prev_node = None
+    prev_nb = ""
 
     def initialize(self):
         logging.info('Calling Juneau handler...')
+        self.graph_db = connect2gdb()
+        self.psql_db = connect2db(cfg.sql_dbname)
+        self.store_graph_db_class = Store_Provenance(self.psql_db, self.graph_db)
+        self.store_prov_db_class = Store_Lineage(self.psql_db)
         # self.search_test_class = WithProv(dbname, 'rowstore')
 
-    def find_variable(self):
-        logging.info('Looking for ' + self.search_var)
+    def find_variable(self, search_var, kernel_id):
+        logging.info('Looking for ' + search_var)
+
         # Make sure we have an engine connection for each kernel
         global done
-        if self.kernel_id not in done:
+        if kernel_id not in done:
             o2, err = data_extension.jupyter.exec_ipython( \
-                self.kernel_id, self.search_var, 'connect_psql')
-            done[self.kernel_id] = {}
+                kernel_id, search_var, 'connect_psql')
+            done[kernel_id] = {}
             logging.info(o2)
             logging.info(err)
 
         output, error = data_extension.jupyter.exec_ipython( \
-            self.kernel_id, self.search_var, 'print_var')
+            kernel_id, search_var, 'print_var')
 
         if error != "" or output == "" or output is None:
             sta = False
             return sta, error
         else:
             sta = True
-            logging.info('Parsing: ' + output)
+            #logging.info('Parsing: ' + output)
             var_obj = pd.read_json(output, orient='split')
             return sta, var_obj
 
@@ -102,6 +118,30 @@ class JuneauHandler(IPythonHandler):
 
     def put(self):
         logging.info('Juneau indexing request')
+        self.data_to_store = self.request.arguments
+
+        var_to_store = str(self.data_to_store['var'][0])[2:-1]
+        var_code = str(self.data_to_store['code'][0])[2:-1]
+        var_nb_name = str(self.data_to_store['nb_name'][0])[2:-1]
+        var_cell_id  = int(str(self.data_to_store['cell_id'][0])[2:-1])
+        kernel_id = str(self.data_to_store['kid'][0])[2:-1]
+
+        success, output = self.find_variable(var_to_store, kernel_id)
+        if success == True:
+
+            if self.prev_nb != var_nb_name:
+                self.prev_node = None
+
+            self.prev_node = self.store_graph_db_class.add_cell(var_code, self.prev_node, var_to_store, var_cell_id, var_nb_name)
+            self.prev_nb = var_nb_name
+
+            store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
+            output.to_sql(name='rtable' + store_table_name, con=self.psql_db, schema=cfg.sql_dbs, if_exists='replace', index=False)
+
+            code_list = var_code.split("\\n\\n")
+
+            self.store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
+
         self.data_trans = {'res': "", 'state': str('true')}
         self.write(json.dumps(self.data_trans))
 
@@ -131,7 +171,7 @@ class JuneauHandler(IPythonHandler):
         else:
             self.fetch_code()
 
-            success, output = self.find_variable()
+            success, output = self.find_variable(self.search_var, self.kernel_id)
 
             if success:
                 data_json = search_tables(search_test_class, output, self.mode, self.code, self.search_var)

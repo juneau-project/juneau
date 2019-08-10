@@ -77,16 +77,19 @@ def search_tables(search_test, var_df, mode, code, var_name):
         tables = search_test.search_joinable_tables_threshold2(query_table, 0.1, 10, 1.5, 0.9, 0.2)
         logging.info("%s Joinable Tables are returned!"%len(tables))
     elif mode == 3:
-        logging.info("Search for Provenance Similar Tables!")
-        code = '\n'.join([t for t in code.split('\\n') if len(t)> 0 and t[0]!='%'])
-        code = '\''.join(code.split('\\\''))
-        line_id = last_line_var(var_name, code)
-        dependency = parse_code(code)
-        graph = generate_graph(dependency)
-        query_name = 'var_' + var_name + '_' + str(line_id)
-        query_node = pre_vars(query_name, graph)
-        tables = search_test.search_role_sim_tables(query_node, 10)
-        logging.info("%s Provenance Similar Tables are returned!"%len(tables))
+        logging.info("Search for Alternative Feature Tables!")
+        tables = search_test.search_alternative_features(query_table, 10, code, var_name, 0.8, 0.1, 1, 0.9, 0.2)
+        logging.info("%s Tables are returned!"%len(tables))
+        #
+        # code = '\n'.join([t for t in code.split('\\n') if len(t)> 0 and t[0]!='%'])
+        # code = '\''.join(code.split('\\\''))
+        # line_id = last_line_var(var_name, code)
+        # dependency = parse_code(code)
+        # graph = generate_graph(dependency)
+        # query_name = 'var_' + var_name + '_' + str(line_id)
+        # query_node = pre_vars(query_name, graph)
+        # tables = search_test.search_role_sim_tables(query_node, 10)
+        # logging.info("%s Provenance Similar Tables are returned!"%len(tables))
 
 
 
