@@ -61,8 +61,8 @@ class Store_Provenance:
     def add_cell(self, code, prev_node, var, cell_id, nb_name):
 
         bcode = str(base64.b64encode(bytes(code,'utf-8')))
+        matcher = NodeMatcher(self.graph_db)
         if bcode in self.code_dict:
-            matcher = NodeMatcher(self.graph_db)
             current_cell = matcher.match("Cell", source_code = bcode).first()
         else:
             if len(list(self.code_dict.values())) != 0:
@@ -85,16 +85,19 @@ class Store_Provenance:
 
         var_name = str(cell_id) + "_" + var + "_" + nb_name
 
-        current_var = Node('Var', name = var_name)
+        current_var = matcher.match("Var", name = var_name).first()
 
-        self.graph_db.create(current_var)
-        self.graph_db.push(current_var)
+        if current_var is None:
+            current_var = Node('Var', name = var_name)
 
-        edge = Relationship(current_cell, 'Contains', current_var)
-        edge2 = Relationship(current_var, 'Containedby', current_cell)
-        self.graph_db.create(edge)
-        self.graph_db.push(edge)
-        self.graph_db.create(edge2)
-        self.graph_db.push(edge2)
+            self.graph_db.create(current_var)
+            self.graph_db.push(current_var)
+
+            edge = Relationship(current_cell, 'Contains', current_var)
+            edge2 = Relationship(current_var, 'Containedby', current_cell)
+            self.graph_db.create(edge)
+            self.graph_db.push(edge)
+            self.graph_db.create(edge2)
+            self.graph_db.push(edge2)
 
         return current_cell

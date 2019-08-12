@@ -308,6 +308,7 @@ define([
 
     function code_exec_callback(msg) {
         var jsonVars = msg.content['text'];
+        var table_dataTypes = ['DataFrame', 'ndarray', 'Series', 'list'];
 
         var notWellDefined = false;
         if (msg.content.evalue) 
@@ -326,8 +327,13 @@ define([
             varList.forEach(listVar => {
                 var data = {'name': listVar.varName,
                             'id': kernel_id};
+                console.log("here");
+                console.log(listVar);
+                var dtype_index = table_dataTypes.indexOf(String(listVar.varType));
 
-                indexTable(data);
+                if(dtype_index != -1){
+                    indexTable(data);
+                }
             });
         }
 
@@ -393,7 +399,7 @@ define([
             type: 'PUT',
             data: data_json,
             dataType: 'json',
-            timeout: 100000,
+            timeout: 10000000,
             success : function (response) {
                 return_state = response['state'];
                 return_data = response['res'];
