@@ -14,6 +14,8 @@ import data_extension.config as cfg
 from data_extension.store_graph import Store_Provenance
 from data_extension.store_prov import Store_Lineage
 
+#from multiprocessing import Pool, TimeoutError
+import concurrent.futures
 
 import os
 import sys
@@ -32,6 +34,8 @@ HERE = os.path.dirname(__file__)
 import data_extension.config as cfg
 
 stdflag = False
+pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)#Pool(processes=2)
+indexed = {}
 
 types_to_exclude = [ \
     'module', \
@@ -51,6 +55,17 @@ done = {}
 search_test_class = None
 
 
+def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_class):
+    logging.info("Sync process starting storing table " + store_table_name)
+    #    output.to_sql(name='rtable' + store_table_name, con=psql_db, \
+    #                  schema=cfg.sql_dbs, if_exists='replace', index=False)
+
+    code_list = var_code.split("\\n\\n")
+
+    # store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
+    logging.info("Sync process completed storing table " + store_table_name)
+
+
 class JuneauHandler(IPythonHandler):
     kernel_id = None
     search_var = None
@@ -64,6 +79,7 @@ class JuneauHandler(IPythonHandler):
     store_graph_db_class = None
     prev_node = None
     prev_nb = ""
+    data_to_store = {}
 
     def initialize(self):
         logging.info('Calling Juneau handler...')
@@ -93,7 +109,7 @@ class JuneauHandler(IPythonHandler):
             return sta, error
         else:
             sta = True
-            #logging.info('Parsing: ' + output)
+            # logging.info('Parsing: ' + output)
             var_obj = pd.read_json(output, orient='split')
             return sta, var_obj
 
@@ -117,30 +133,48 @@ class JuneauHandler(IPythonHandler):
                        'schema': cfg.sql_dbs}
 
     def put(self):
-        logging.info('Juneau indexing request')
+        global pool
+        global indexed
+        global fn
         self.data_to_store = self.request.arguments
 
+        if len(self.data_to_store) == 0:
+            self.data_trans = {'res': "", 'error': "Invalid request", 'state': str('false')}
+            self.write(json.dumps(self.data_trans))
+            return
+
         var_to_store = str(self.data_to_store['var'][0])[2:-1]
-        var_code = str(self.data_to_store['code'][0])[2:-1]
-        var_nb_name = str(self.data_to_store['nb_name'][0])[2:-1]
-        var_cell_id  = int(str(self.data_to_store['cell_id'][0])[2:-1])
-        kernel_id = str(self.data_to_store['kid'][0])[2:-1]
+        logging.info('Juneau indexing request: ' + var_to_store)
 
-        success, output = self.find_variable(var_to_store, kernel_id)
-        if success == True:
+        if var_to_store in indexed:
+            logging.info('Request to index is already registered')
+        else:
+            indexed[var_to_store] = True
 
-            if self.prev_nb != var_nb_name:
-                self.prev_node = None
+            var_code = str(self.data_to_store['code'][0])[2:-1]
+            var_nb_name = str(self.data_to_store['nb_name'][0])[2:-1]
+            var_cell_id = int(str(self.data_to_store['cell_id'][0])[2:-1])
+            kernel_id = str(self.data_to_store['kid'][0])[2:-1]
 
-            self.prev_node = self.store_graph_db_class.add_cell(var_code, self.prev_node, var_to_store, var_cell_id, var_nb_name)
-            self.prev_nb = var_nb_name
+            success, output = self.find_variable(var_to_store, kernel_id)
+            if success:
+                if self.prev_nb != var_nb_name:
+                    self.prev_node = None
+
+                self.prev_node = self.store_graph_db_class.add_cell(var_code, \
+                                                                    self.prev_node, \
+                                                                    var_to_store, \
+                                                                    var_cell_id, var_nb_name)
+                self.prev_nb = var_nb_name
+
+                logging.info("Spawning sync process for storing table " + var_to_store)
 
             store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
-            output.to_sql(name='rtable' + store_table_name, con=self.psql_db, schema=cfg.sql_dbs, if_exists='replace', index=False)
 
-            code_list = var_code.split("\\n\\n")
+            res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
+                                        self.psql_db, self.store_prov_db_class)
 
-            self.store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
+            #res.result()
 
         self.data_trans = {'res': "", 'state': str('true')}
         self.write(json.dumps(self.data_trans))
