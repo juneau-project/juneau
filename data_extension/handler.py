@@ -55,15 +55,16 @@ done = {}
 search_test_class = None
 
 
+# Asynchronous storage of tables
 def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_class):
-    logging.info("Sync process starting storing table " + store_table_name)
-    #    output.to_sql(name='rtable' + store_table_name, con=psql_db, \
-    #                  schema=cfg.sql_dbs, if_exists='replace', index=False)
+    logging.info("Synchronization process starting storing table " + store_table_name)
+    output.to_sql(name='rtable' + store_table_name, con=psql_db, \
+                      schema=cfg.sql_dbs, if_exists='replace', index=False)
 
     code_list = var_code.split("\\n\\n")
 
-    # store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
-    logging.info("Sync process completed storing table " + store_table_name)
+    store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
+    logging.info("Synchronization process exiting after storing table " + store_table_name)
 
 
 class JuneauHandler(IPythonHandler):
@@ -167,14 +168,10 @@ class JuneauHandler(IPythonHandler):
                                                                     var_cell_id, var_nb_name)
                 self.prev_nb = var_nb_name
 
-                logging.info("Spawning sync process for storing table " + var_to_store)
+                store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
 
-            store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
-
-            res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                                        self.psql_db, self.store_prov_db_class)
-
-            #res.result()
+                res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
+                                            self.psql_db, self.store_prov_db_class)
 
         self.data_trans = {'res': "", 'state': str('true')}
         self.write(json.dumps(self.data_trans))
