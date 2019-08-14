@@ -14,6 +14,7 @@ import data_extension.config as cfg
 from data_extension.store_graph import Store_Provenance
 from data_extension.store_prov import Store_Lineage
 
+from sqlalchemy.exc import NoSuchTableError
 #from multiprocessing import Pool, TimeoutError
 import concurrent.futures
 
@@ -64,6 +65,8 @@ def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_c
         logging.info('Base table stored')
     except ValueError:
         logging.error('Unable to store table ' + store_table_name + ' due to value error')
+    except NoSuchTableError:
+        logging.error('Unable to store table ' + store_table_name + ' due to no-such-table error')
 
     code_list = var_code.split("\\n#\\n")
 
@@ -182,11 +185,11 @@ class JuneauHandler(IPythonHandler):
 
                 store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
 
-                #fn(output, store_table_name, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
-                res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                                            self.psql_db, self.store_prov_db_class)
-                #
-                # res.result()
+                fn(output, store_table_name, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
+                #res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
+                #                            self.psql_db, self.store_prov_db_class)
+
+                #res.result()
 
         self.data_trans = {'res': "", 'state': str('true')}
         self.write(json.dumps(self.data_trans))

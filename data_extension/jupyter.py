@@ -3,7 +3,7 @@ import sys
 import site
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 import sys
 
@@ -11,54 +11,68 @@ from jupyter_client import find_connection_file
 from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
 TIMEOUT=6
 
+from data_extension.file_lock import FileLock
 from queue import Empty
+jupyter_lock = FileLock('my.lock')
 
 def request_var(kid, var):
 
     # load connection info and init communication
     cf = find_connection_file(kid)  # str(port))
-    km = BlockingKernelClient(connection_file=cf)
-    km.load_connection_file()
-    km.start_channels()
 
-    code = "import pandas as pd\nimport numpy as np\nif type(" + var + ") " \
-        "is pd.DataFrame or type(" + var + ") is np.ndarray or type(" + var + ") is list:\n"
-    code = code + "\tprint(" + var + ".to_json(orient='split', index = False))\n"
-    logging.debug('Executing:\n' + str(code))
-    msg_id = km.execute(code, store_history=False)
+    global jupyter_lock
 
-    reply = km.get_shell_msg(msg_id)
-    logging.debug('Execution reply:\n' + str(reply))
-    state = 'busy'
-
-    output = None
+    jupyter_lock.acquire()
     try:
-        while state != 'idle' and km.is_alive():
-            try:
-                msg = km.get_iopub_msg(timeout=1)
-                logging.debug('Read ' + str(msg))
-                if not 'content' in msg:
-                    continue
-                if 'name' in msg['content'] and msg['content']['name'] == 'stdout':
-                    logging.debug('Got data '+ msg['content']['text'])
-                    output = msg['content']['text']
-                if 'execution_state' in msg['content']:
-                    logging.debug('Got state')
-                    state = msg['content']['execution_state']
-            except Empty:
-                pass
-    except KeyboardInterrupt:
-        logging.error('Keyboard interrupt')
-        pass
-    finally:
-        logging.info('Done reading')
-        km.stop_channels()
+        km = BlockingKernelClient(connection_file=cf)
+        km.load_connection_file()
+        km.start_channels()
 
-    logging.debug(str(output))
-    error = ''
-    if reply['content']['status'] != 'ok':
-        error = output
+        code = "import pandas as pd\nimport numpy as np\nif type(" + var + ") " \
+            "is pd.DataFrame or type(" + var + ") is np.ndarray or type(" + var + ") is list:\n"
+        code = code + "\tprint(" + var + ".to_json(orient='split', index = False))\n"
+        # logging.debug('Executing:\n' + str(code))
+        msg_id = km.execute(code, store_history=False)
+
+        reply = km.get_shell_msg(msg_id,timeout=60)
+        #logging.info('Execution reply:\n' + str(reply))
+        state = 'busy'
+
         output = None
+        idle_count = 0
+        try:
+            while idle_count < 1 and km.is_alive():
+                try:
+                    msg = km.get_iopub_msg(timeout=10)
+                    logging.info('Read ' + str(msg))
+                    if not 'content' in msg:
+                        continue
+                    if 'name' in msg['content'] and msg['content']['name'] == 'stdout':
+                        #logging.debug('Got data '+ msg['content']['text'])
+                        output = msg['content']['text']
+                    if 'execution_state' in msg['content']:
+                        #logging.debug('Got state')
+                        state = msg['content']['execution_state']
+                    if state == 'idle':
+                        idle_count = idle_count + 1
+                except Empty:
+                    pass
+        except KeyboardInterrupt:
+            logging.error('Keyboard interrupt')
+            pass
+        finally:
+            #logging.info('Kernel IO finished')
+            km.stop_channels()
+
+        # logging.info(str(output))
+        error = ''
+        if reply['content']['status'] != 'ok':
+            logging.error('Status is ' + reply['content']['status'])
+            logging.error(str(output))
+            error = output
+            output = None
+    finally:
+        jupyter_lock.release()
 
     return output, error
 
