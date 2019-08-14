@@ -34,8 +34,8 @@ class Store_Lineage:
             cursor = conn.cursor()
             #query1 = "DROP SCHEMA IF EXISTS graph_model CASCADE;"
             #query2 = "CREATE SCHEMA graph_model;"
-            query3 = "CREATE TABLE IF NOT EXISTS graph_model.dependen (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
-            query4 = "CREATE TABLE IF NOT EXISTS graph_model.line2cid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
+            query3 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".dependen (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
+            query4 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".line2cid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
 
 
             #try:
@@ -86,7 +86,10 @@ class Store_Lineage:
                     continue
                 if code[0] == '%':
                     codes.remove(code)
-            all_code = all_code + '\\n'.join(codes) + '\\n'
+                if code[0] == '#':
+                    codes.remove(code)
+
+            all_code = all_code + '\n'.join(codes) + '\n'
 
         tree = ast.parse(all_code)
         test.visit(tree)

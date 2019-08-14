@@ -65,7 +65,7 @@ def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_c
     except ValueError:
         logging.error('Unable to store table ' + store_table_name + ' due to value error')
 
-    code_list = var_code.split("\\n\\n")
+    code_list = var_code.split("\\n#\\n")
 
     try:
         logging.info(var_nb_name)

@@ -378,7 +378,7 @@ define([
 
         var cells = Jupyter.notebook.get_cells();
         var clen = Jupyter.notebook.get_selected_cells_indices()[0];
-        var nb_name = Jupyter.notebook.notebook_path + Jupyter.notebook.notebook_name;
+        var nb_name = Jupyter.notebook.notebook_path;
         var kernel_id = Jupyter.notebook.kernel.id;
 
         var i;
@@ -386,7 +386,7 @@ define([
         var cell_id_count = 0;
         for (i = 0; i < clen; i++) {
             if(cells[i].cell_type === 'code'){
-                cell_code = cell_code + cells[i].get_text() + '\n\n';
+                cell_code = cell_code + cells[i].get_text() + '\n#\n';
                 cell_id_count = cell_id_count + 1;
             }
         }
