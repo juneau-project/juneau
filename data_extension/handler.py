@@ -100,7 +100,7 @@ class JuneauHandler(IPythonHandler):
         # self.search_test_class = WithProv(dbname, 'rowstore')
 
     def find_variable(self, search_var, kernel_id):
-        logging.info('Looking for ' + search_var)
+        logging.info('Looking up variable ' + search_var)
 
         # Make sure we have an engine connection for each kernel
         global done
@@ -111,8 +111,8 @@ class JuneauHandler(IPythonHandler):
             logging.info(o2)
             logging.info(err)
 
-        output, error = data_extension.jupyter.exec_ipython( \
-            kernel_id, search_var, 'print_var')
+        output, error = data_extension.jupyter.request_var(kernel_id, search_var)
+        logging.info('Returned with variable: ' + str(output))
 
         if error != "" or output == "" or output is None:
             sta = False
@@ -182,10 +182,11 @@ class JuneauHandler(IPythonHandler):
 
                 store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
 
-                res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                                            self.psql_db, self.store_prov_db_class)
-
-                res.result()
+                fn(output, store_table_name, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
+                # res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
+                #                             self.psql_db, self.store_prov_db_class)
+                #
+                # res.result()
 
         self.data_trans = {'res': "", 'state': str('true')}
         self.write(json.dumps(self.data_trans))
