@@ -2,12 +2,16 @@ import pandas as pd
 from py2neo import Graph, Node, Relationship, cypher, NodeMatcher
 import base64
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
 class Store_Provenance:
 
-    def __connect2gdb(self):
-        graph = Graph("http://neo4j:yizhang@localhost:7474/db/data")
-        graph.delete_all()
-        return graph
+    # def __connect2gdb(self):
+    #     graph = Graph("http://neo4j:yizhang@localhost:7474/db/data")
+    #     graph.delete_all()
+    #     return graph
 
     def __init__(self, postgres_eng, graph_eng):
         self.graph_db = graph_eng #self.__connect2gdb()
@@ -26,17 +30,17 @@ class Store_Provenance:
             try:
                 self.postgres_eng.execute(query1)
             except:
-                print("store provenance: DROP PROVENANCE SCHEMA FAILED!\n")
+                logging.error("store provenance: DROP PROVENANCE SCHEMA FAILED!\n")
 
             try:
                 self.postgres_eng.execute(query2)
                 self.postgres_eng.execute(query3)
             except:
-                print("store provenance: CREATE PROVENANCE SCHEMA FAILED\n")
+                logging.error("store provenance: CREATE PROVENANCE SCHEMA FAILED\n")
 
             return True
         except:
-            print("store provenance: Connecting Database Failed!\n")
+            logging.error("store provenance: Connecting Database Failed!\n")
             return False
 
     def __fetch_code_dict(self):
@@ -46,7 +50,7 @@ class Store_Provenance:
                 self.code_dict[row['code']] = int(row['cell_id'])
             return True
         except:
-            print("store provenance: Reading Code Table Failed!\n")
+            logging.error("store provenance: Reading Code Table Failed!\n")
             return False
 
     def store_code_dict(self):

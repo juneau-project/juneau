@@ -8,25 +8,29 @@ import pandas as pd
 
 
 special_type = ['np', 'pd']
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Store_Lineage:
 
-    def __connect2db(self):
-        engine = create_engine("postgresql://" + user_name + ":" + password + "@localhost/" + self.dbname)
-        return engine.connect()
+    # def __connect2db(self):
+    #     engine = create_engine("postgresql://" + user_name + ":" + password + "@localhost/" + self.dbname)
+    #     return engine.connect()
 
     def __connect2db_init(self):
         # Define our connection string
-        conn_string = "host=\'" + cfg.sql_host + "\' dbname=\'" + cfg.sql_dbname + "\' user=\'" + cfg.sql_name + "\' password=\'" + cfg.sql_password + "\'"
+        conn_string = "host=\'" + cfg.sql_host + "\' dbname=\'" + cfg.sql_dbname + \
+                      "\' user=\'" + cfg.sql_name + "\' password=\'" + cfg.sql_password + "\'"
 
         # print the connection string we will use to connect
-        #print("Connecting to database\n	->%s" % (conn_string))
+        #logging.info("Connecting to database\n	->%s" % (conn_string))
 
         # get a connection, if a connect cannot be made an exception will be raised here
         try:
             # conn.cursor will return a cursor object, you can use this cursor to perform queries
             conn = psycopg2.connect(conn_string)
-#            print("Connecting Database Succeeded!\n")
+            logging.info("Connecting Database Succeeded!\n")
             cursor = conn.cursor()
             #query1 = "DROP SCHEMA IF EXISTS graph_model CASCADE;"
             #query2 = "CREATE SCHEMA graph_model;"
@@ -43,18 +47,20 @@ class Store_Lineage:
             try:
 #                cursor.execute(query2)
                 cursor.execute(query3)
+                logging.info("First table created")
                 cursor.execute(query4)
+                logging.info("Second table created")
                 conn.commit()
 
             except:
-                print("Create Tables Failed!\n")
+                logging.error("Create Tables Failed!\n")
 
             cursor.close()
             conn.close()
             return True
 
         except:
-            print("Connecting Database Failed!\n")
+            logging.error("Connecting Database Failed!\n")
             return False
 
     def __init__(self, psql_eng):
@@ -149,16 +155,25 @@ class Store_Lineage:
 
     def InsertTable_Model(self, var_name, code_list, nb_name):
 
-        dep_db = pd.read_sql_table("dependen", self.eng, schema = cfg.sql_graph)
-        l2c_db = pd.read_sql_table("line2cid", self.eng, schema = cfg.sql_graph)
+        logging.info('Updating provenance...')
+        try:
+            dep_db = pd.read_sql_table("dependen", self.eng, schema = cfg.sql_graph)
+            l2c_db = pd.read_sql_table("line2cid", self.eng, schema = cfg.sql_graph)
+        except:
+            logging.error('Unable to read the provenance tables')
+
         var_list = dep_db['view_id'].tolist()
 
 
         dep, c2i = self.__parse_code(code_list)
 
+        logging.info('Parsed code')
+
         #self.generate_graph(code_list, nb_name)
         dep_str = json.dumps(dep)
         l2c_str = json.dumps(c2i)
+
+        logging.info('JSON created')
 
         self.Variable.append(var_name)
         self.view_cmd[var_name] = dep_str
@@ -167,8 +182,12 @@ class Store_Lineage:
         encode1 = dep_str #base64.b64encode(dep)
         encode2 = l2c_str #base64.b64encode(c2i)
         if var_name not in var_list:
-            self.eng.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + var_name + "\', \'" + encode1 + "\')")
-            self.eng.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + var_name + "\', \'" + encode2 + "\')")
+            logging.debug('Inserting values into dependen and line2cid')
+            try:
+                self.eng.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + var_name + "\', \'" + encode1 + "\')")
+                self.eng.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + var_name + "\', \'" + encode2 + "\')")
+            except:
+                logging.error('Unable to insert into tables')
 
     def close_dbconnection(self):
         self.eng.close()

@@ -58,12 +58,21 @@ search_test_class = None
 # Asynchronous storage of tables
 def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_class):
     logging.info("Synchronization process starting storing table " + store_table_name)
-    output.to_sql(name='rtable' + store_table_name, con=psql_db, \
-                      schema=cfg.sql_dbs, if_exists='replace', index=False)
+    try:
+        output.to_sql(name='rtable' + store_table_name, con=psql_db, \
+                          schema=cfg.sql_dbs, if_exists='replace', index=False)
+        logging.info('Base table stored')
+    except ValueError:
+        logging.error('Unable to store table ' + store_table_name + ' due to value error')
 
     code_list = var_code.split("\\n\\n")
 
-    store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
+    try:
+        logging.info(var_nb_name)
+        logging.info(code_list)
+        store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
+    except:
+        logging.error('Unable to store table ' + store_table_name + ' provenance due to error')
     logging.info("Synchronization process exiting after storing table " + store_table_name)
 
 
@@ -162,10 +171,13 @@ class JuneauHandler(IPythonHandler):
                 if self.prev_nb != var_nb_name:
                     self.prev_node = None
 
-                self.prev_node = self.store_graph_db_class.add_cell(var_code, \
-                                                                    self.prev_node, \
-                                                                    var_to_store, \
-                                                                    var_cell_id, var_nb_name)
+                try:
+                    self.prev_node = self.store_graph_db_class.add_cell(var_code, \
+                                                                        self.prev_node, \
+                                                                        var_to_store, \
+                                                                        var_cell_id, var_nb_name)
+                except:
+                    logging.error('Unable to store in graph store')
                 self.prev_nb = var_nb_name
 
                 store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
