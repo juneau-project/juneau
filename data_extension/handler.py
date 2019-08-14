@@ -182,9 +182,9 @@ class JuneauHandler(IPythonHandler):
 
                 store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
 
-                fn(output, store_table_name, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
-                # res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                #                             self.psql_db, self.store_prov_db_class)
+                #fn(output, store_table_name, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
+                res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
+                                            self.psql_db, self.store_prov_db_class)
                 #
                 # res.result()
 
