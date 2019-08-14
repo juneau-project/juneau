@@ -185,6 +185,8 @@ class JuneauHandler(IPythonHandler):
                 res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
                                             self.psql_db, self.store_prov_db_class)
 
+                res.result()
+
         self.data_trans = {'res': "", 'state': str('true')}
         self.write(json.dumps(self.data_trans))
 

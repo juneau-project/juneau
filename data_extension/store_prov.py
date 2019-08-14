@@ -47,9 +47,7 @@ class Store_Lineage:
             try:
 #                cursor.execute(query2)
                 cursor.execute(query3)
-                logging.info("First table created")
                 cursor.execute(query4)
-                logging.info("Second table created")
                 conn.commit()
 
             except:
@@ -164,6 +162,7 @@ class Store_Lineage:
 
         var_list = dep_db['view_id'].tolist()
 
+        logging.info('About to parse code')
 
         dep, c2i = self.__parse_code(code_list)
 
