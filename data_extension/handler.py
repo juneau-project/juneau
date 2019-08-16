@@ -95,11 +95,12 @@ class JuneauHandler(IPythonHandler):
     data_to_store = {}
 
     def initialize(self):
-        logging.info('Calling Juneau handler...')
         self.graph_db = connect2gdb()
         self.psql_db = connect2db(cfg.sql_dbname)
         self.store_graph_db_class = Store_Provenance(self.psql_db, self.graph_db)
         self.store_prov_db_class = Store_Lineage(self.psql_db)
+
+        logging.info('Calling Juneau handler...')
         # self.search_test_class = WithProv(dbname, 'rowstore')
 
     def find_variable(self, search_var, kernel_id):
@@ -115,6 +116,7 @@ class JuneauHandler(IPythonHandler):
             logging.info(err)
 
         output, error = data_extension.jupyter.request_var(kernel_id, search_var)
+        #output, error = data_extension.jupyter.exec_ipython(kernel_id, search_var, 'print_var')
         logging.info('Returned with variable: ' + str(output))
 
         if error != "" or output == "" or output is None:

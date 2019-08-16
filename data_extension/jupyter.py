@@ -41,15 +41,16 @@ def request_var(kid, var):
         output = None
         idle_count = 0
         try:
-            while idle_count < 1 and km.is_alive():
+            while km.is_alive():
                 try:
                     msg = km.get_iopub_msg(timeout=10)
-                    logging.info('Read ' + str(msg))
+                    #logging.debug('Read ' + str(msg))
                     if not 'content' in msg:
                         continue
                     if 'name' in msg['content'] and msg['content']['name'] == 'stdout':
                         #logging.debug('Got data '+ msg['content']['text'])
                         output = msg['content']['text']
+                        break
                     if 'execution_state' in msg['content']:
                         #logging.debug('Got state')
                         state = msg['content']['execution_state']
@@ -78,23 +79,29 @@ def request_var(kid, var):
 
 # Execute via IPython kernel
 def exec_ipython(kernel_id, search_var, py_file):
-    logging.debug('Exec ' + py_file)
-    file_name = site.getsitepackages()[0] + '/data_extension/' + py_file + '.py'
+    global jupyter_lock
+
+    jupyter_lock.acquire()
     try:
-        if sys.version_info[0] >= 3:
-            msg_id = subprocess.Popen(['python3', file_name, \
-                                       kernel_id, search_var], \
-                                      stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        else:
+        logging.debug('Exec ' + py_file)
+        file_name = site.getsitepackages()[0] + '/data_extension/' + py_file + '.py'
+        try:
+            if sys.version_info[0] >= 3:
+                msg_id = subprocess.Popen(['python3', file_name, \
+                                           kernel_id, search_var], \
+                                          stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            else:
+                msg_id = subprocess.Popen(['python', file_name, \
+                                           kernel_id, search_var], \
+                                          stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        except FileNotFoundError:
             msg_id = subprocess.Popen(['python', file_name, \
                                        kernel_id, search_var], \
                                       stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-    except FileNotFoundError:
-        msg_id = subprocess.Popen(['python', file_name, \
-                                   kernel_id, search_var], \
-                                  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 
-    output, error = msg_id.communicate()
+        output, error = msg_id.communicate()
+    finally:
+        jupyter_lock.release()
 
     if sys.version[0] == '3':
         output = output.decode("utf-8")

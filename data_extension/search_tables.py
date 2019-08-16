@@ -6,6 +6,8 @@ import os
 import pandas as pd
 import pickle
 import logging
+logging.basicConfig(level=logging.DEBUG)
+
 from data_extension.table_db import fetch_all_table_names, fetch_all_views
 
 class SearchTables:
@@ -25,21 +27,35 @@ class SearchTables:
         if schema:
             logging.info('Indexing existing tables from data lake')
             self.tables = fetch_all_table_names(schema, self.eng)
+            count = 0
             for i in self.tables:
                 try:
                     table_r = pd.read_sql_table(i, self.eng, schema=schema)
                     if 'Unnamed: 0' in table_r.columns:
                         table_r.drop(['Unnamed: 0'], axis=1, inplace=True)
                     self.real_tables[i] = table_r
+                    count = count + 1
+
+                    if count % 20 == 0:
+                        logging.info("Indexed " + count + " tables...")
+                except KeyboardInterrupt:
+                    return
                 except:
                     continue
         else:
             logging.info('Indexing views from data lake')
             self.tables = fetch_all_views(self.eng)
+            count = 0
             for i in self.tables:
                 try:
                     table_r = pd.read_sql_table(i, self.eng)
                     self.real_tables[i] = table_r
+                    count = count + 1
+
+                    if count % 20 == 0:
+                        logging.info("Indexed " + count + " tables...")
+                except KeyboardInterrupt:
+                    return
                 except:
                     continue
 
