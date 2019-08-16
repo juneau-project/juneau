@@ -58,7 +58,7 @@ search_test_class = None
 
 # Asynchronous storage of tables
 def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_class):
-    logging.info("Synchronization process starting storing table " + store_table_name)
+    logging.info("Storing table " + store_table_name)
     try:
         output.to_sql(name='rtable' + store_table_name, con=psql_db, \
                           schema=cfg.sql_dbs, if_exists='replace', index=False)
@@ -67,6 +67,8 @@ def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_c
         logging.error('Unable to store table ' + store_table_name + ' due to value error')
     except NoSuchTableError:
         logging.error('Unable to store table ' + store_table_name + ' due to no-such-table error')
+    except:
+        logging.error('Unable to store table ' + store_table_name + ' due to unknown error')
 
     code_list = var_code.split("\\n#\\n")
 
@@ -76,7 +78,7 @@ def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_c
         store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
     except:
         logging.error('Unable to store table ' + store_table_name + ' provenance due to error')
-    logging.info("Synchronization process exiting after storing table " + store_table_name)
+    logging.info("Returning after storing table " + store_table_name)
 
 
 class JuneauHandler(IPythonHandler):
@@ -90,42 +92,30 @@ class JuneauHandler(IPythonHandler):
     graph_db = None
     psql_db = None
     store_graph_db_class = None
+    store_prov_db_class = None
     prev_node = None
     prev_nb = ""
     data_to_store = {}
 
     def initialize(self):
-        self.graph_db = connect2gdb()
-        self.psql_db = connect2db(cfg.sql_dbname)
-        self.store_graph_db_class = Store_Provenance(self.psql_db, self.graph_db)
-        self.store_prov_db_class = Store_Lineage(self.psql_db)
-
         logging.info('Calling Juneau handler...')
         # self.search_test_class = WithProv(dbname, 'rowstore')
 
     def find_variable(self, search_var, kernel_id):
         logging.info('Looking up variable ' + search_var)
 
-        # Make sure we have an engine connection for each kernel
-        global done
-        if kernel_id not in done:
-            o2, err = data_extension.jupyter.exec_ipython( \
-                kernel_id, search_var, 'connect_psql')
-            done[kernel_id] = {}
-            logging.info(o2)
-            logging.info(err)
-
         output, error = data_extension.jupyter.request_var(kernel_id, search_var)
         #output, error = data_extension.jupyter.exec_ipython(kernel_id, search_var, 'print_var')
-        logging.info('Returned with variable: ' + str(output))
+        logging.info('Returned with variable')
 
         if error != "" or output == "" or output is None:
             sta = False
             return sta, error
         else:
             sta = True
-            # logging.info('Parsing: ' + output)
+            logging.info('Parsing: ' + output)
             var_obj = pd.read_json(output, orient='split')
+
             return sta, var_obj
 
     def fetch_kernel_id(self):
@@ -173,6 +163,17 @@ class JuneauHandler(IPythonHandler):
 
             success, output = self.find_variable(var_to_store, kernel_id)
             if success:
+                if not self.graph_db:
+                    self.graph_db = connect2gdb()
+                if not self.psql_db:
+                    self.psql_db = connect2db(cfg.sql_dbname)
+
+                if not self.store_graph_db_class:
+                    self.store_graph_db_class = Store_Provenance(self.psql_db, self.graph_db)
+
+                if not self.store_prov_db_class:
+                    self.store_prov_db_class = Store_Lineage(self.psql_db)
+
                 if self.prev_nb != var_nb_name:
                     self.prev_node = None
 
@@ -232,6 +233,17 @@ class JuneauHandler(IPythonHandler):
                 else:
                     self.data_trans = {'res': data_json, 'state': str('false')}
                     self.write(json.dumps(self.data_trans))
+
+                # Make sure we have an engine connection in case we want to read
+                global done
+                if self.kernel_id not in done:
+                    o2, err = data_extension.jupyter.exec_ipython( \
+                        self.kernel_id, self.search_var, 'connect_psql')
+                    #o2, err = data_extension.jupyter.connect_psql(kernel_id, search_var)
+                    done[self.kernel_id] = {}
+                    logging.info(o2)
+                    logging.info(err)
+
             else:
                 logging.error("The table was not found:")
                 logging.error(output)

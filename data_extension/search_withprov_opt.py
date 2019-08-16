@@ -338,7 +338,7 @@ class WithProv_Optimized(WithProv):
             nid = t[-1]
 
             if(nid not in self.n_l2cid):
-                print("notebook" + str(nid) + " does not exist in " + self.n_l2cid)
+                print("notebook " + str(nid) + " does not exist in " + str(self.n_l2cid.keys()))
 
             vname = '_'.join(t[1:-2])
 

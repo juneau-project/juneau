@@ -212,6 +212,8 @@ class SearchTables:
                     # b = b[~pd.isnull(b)].values
                     try:
                         sim_array.append(float(len(np.intersect1d(a, b))) / float(len(np.union1d(a, b))))
+                    except KeyboardInterrupt:
+                        return 0
                     except:
                         print(a)
                         print(b)

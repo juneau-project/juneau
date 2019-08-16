@@ -15,8 +15,38 @@ from data_extension.file_lock import FileLock
 from queue import Empty
 jupyter_lock = FileLock('my.lock')
 
-def request_var(kid, var):
+import data_extension.config as cfg
 
+def request_var(kid, var):
+    """
+    Request the contents of a dataframe or matrix
+
+    :param kid:
+    :param var:
+    :return: Tuple with first parameter being JSON form of output, 2nd parameter being error if
+             1st is None
+    """
+    code = "import pandas as pd\nimport numpy as np\nif type(" + var + ") " \
+                                                                       "is pd.DataFrame or type(" + var + ") is np.ndarray or type(" + var + ") is list:\n"
+    code = code + "\tprint(" + var + ".to_json(orient='split', index = False))\n"
+    return exec_code(kid, var, code)
+
+def connect_psql(kid, var):
+    """
+    Create a juneau_connect() function for use in the notebook
+
+    :param kid:
+    :param var:
+    :return:
+    """
+    code = 'from sqlalchemy import create_engine\n' + \
+        'user_name = \'' + cfg.sql_name + '\'\n' + \
+        'password = \'' + cfg.sql_password + '\'\n' + \
+        'dbname = \'' + cfg.sql_dbname + '\'\n' + \
+        'def juneau_connect():\n\tengine = create_engine(\'postgresql://\' + user_name + \':\' + password + \'@localhost/\' + dbname,connect_args={\'options\': \'-csearch_path={}\'.format("' + cfg.sql_dbs + '")})\n\treturn engine.connect()';
+    return exec_code(kid, var, code)
+
+def exec_code(kid, var, code):
     # load connection info and init communication
     cf = find_connection_file(kid)  # str(port))
 
@@ -28,9 +58,6 @@ def request_var(kid, var):
         km.load_connection_file()
         km.start_channels()
 
-        code = "import pandas as pd\nimport numpy as np\nif type(" + var + ") " \
-            "is pd.DataFrame or type(" + var + ") is np.ndarray or type(" + var + ") is list:\n"
-        code = code + "\tprint(" + var + ".to_json(orient='split', index = False))\n"
         # logging.debug('Executing:\n' + str(code))
         msg_id = km.execute(code, store_history=False)
 
