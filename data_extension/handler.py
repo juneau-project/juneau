@@ -52,7 +52,6 @@ types_to_include = [ \
     'DataFrame', \
     'list']
 
-done = {}
 search_test_class = None
 
 
@@ -68,22 +67,23 @@ def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_c
     except NoSuchTableError:
         logging.error('Unable to store table ' + store_table_name + ' due to no-such-table error')
     except:
-        logging.error('Unable to store table ' + store_table_name + ' due to unknown error')
-
-    code_list = var_code.split("\\n#\\n")
+        logging.error('Unable to store table ' + store_table_name + ' due to error ' + sys.exc_info()[0])
 
     try:
+        code_list = var_code.split("\\n#\\n")
+
         logging.info(var_nb_name)
         logging.info(code_list)
         store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
     except:
-        logging.error('Unable to store table ' + store_table_name + ' provenance due to error')
+        logging.error('Unable to store provenance for ' + store_table_name + ' due to error ' + sys.exc_info()[0])
     logging.info("Returning after storing table " + store_table_name)
 
 
 class JuneauHandler(IPythonHandler):
     kernel_id = None
     search_var = None
+    done = {}
     code = None
     mode = None
     dbinfo = {}
@@ -98,8 +98,9 @@ class JuneauHandler(IPythonHandler):
     data_to_store = {}
 
     def initialize(self):
-        logging.info('Calling Juneau handler...')
+        #logging.info('Calling Juneau handler...')
         # self.search_test_class = WithProv(dbname, 'rowstore')
+        pass
 
     def find_variable(self, search_var, kernel_id):
         logging.info('Looking up variable ' + search_var)
@@ -183,7 +184,7 @@ class JuneauHandler(IPythonHandler):
                                                                         var_to_store, \
                                                                         var_cell_id, var_nb_name)
                 except:
-                    logging.error('Unable to store in graph store')
+                    logging.error('Unable to store in graph store due to error ' + sys.exc_info()[0])
                 self.prev_nb = var_nb_name
 
                 store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
@@ -235,12 +236,11 @@ class JuneauHandler(IPythonHandler):
                     self.write(json.dumps(self.data_trans))
 
                 # Make sure we have an engine connection in case we want to read
-                global done
-                if self.kernel_id not in done:
+                if self.kernel_id not in self.done:
                     o2, err = data_extension.jupyter.exec_ipython( \
                         self.kernel_id, self.search_var, 'connect_psql')
                     #o2, err = data_extension.jupyter.connect_psql(kernel_id, search_var)
-                    done[self.kernel_id] = {}
+                    self.done[self.kernel_id] = {}
                     logging.info(o2)
                     logging.info(err)
 

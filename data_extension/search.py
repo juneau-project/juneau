@@ -41,16 +41,16 @@ def _getsizeof(x):
 
 
 class TableSearch:
-    query = None
-    eng = None
-    geng = None
+    #query = None
+    #eng = None
+    #geng = None
 
     real_tables = {}
 
     def __init__(self, dbname, schema = None):
-        self.query = None
-        self.eng = connect2db(dbname)
-        self.geng = connect2gdb()
+        #self.query = None
+        #self.eng = connect2db(dbname)
+        #self.geng = connect2gdb()
 
         self.real_tables = {}
 

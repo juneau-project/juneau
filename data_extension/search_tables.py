@@ -8,6 +8,8 @@ import pickle
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
+import sys
+
 from data_extension.table_db import fetch_all_table_names, fetch_all_views
 
 class SearchTables:
@@ -37,10 +39,18 @@ class SearchTables:
                     count = count + 1
 
                     if count % 20 == 0:
-                        logging.info("Indexed " + count + " tables...")
+                        logging.info("Indexed " + str(count) + " tables...")
                 except KeyboardInterrupt:
                     return
+                except ValueError:
+                    logging.info("Value error, skipping table " + i)
+                    continue
+                except TypeError:
+                    logging.info("Type error, skipping table " + i)
+                    continue
                 except:
+                    logging.info("Error, skipping table " + i)
+                    logging.error("Unexpected error:", sys.exc_info()[0])
                     continue
         else:
             logging.info('Indexing views from data lake')
@@ -53,10 +63,18 @@ class SearchTables:
                     count = count + 1
 
                     if count % 20 == 0:
-                        logging.info("Indexed " + count + " tables...")
+                        logging.info("Indexed " + str(count) + " tables...")
+                except ValueError:
+                    logging.info("Error, skipping table " + i)
+                    continue
+                except TypeError:
+                    logging.info("Type error, skipping table " + i)
+                    continue
                 except KeyboardInterrupt:
                     return
                 except:
+                    logging.info("Error, skipping table " + i)
+                    logging.error("Unexpected error:", sys.exc_info()[0])
                     continue
 
         logging.info('%s tables detected in the database.'%len(self.real_tables.keys()))
