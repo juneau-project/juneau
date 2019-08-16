@@ -6,7 +6,7 @@ import data_extension.config as cfg
 import psycopg2
 import pandas as pd
 
-
+import sys
 special_type = ['np', 'pd']
 import logging
 
@@ -158,38 +158,35 @@ class Store_Lineage:
 
         logging.info('Updating provenance...')
         try:
-            dep_db = pd.read_sql_table("dependen", self.eng, schema = cfg.sql_graph)
+            dep_db = pd.read_sql_table("dependen", self.eng, columns=['view_id'], schema = cfg.sql_graph)
             l2c_db = pd.read_sql_table("line2cid", self.eng, schema = cfg.sql_graph)
+
+            var_list = dep_db['view_id'].tolist()
+
+            dep, c2i = self.__parse_code(code_list)
+
+            #self.generate_graph(code_list, nb_name)
+            dep_str = json.dumps(dep)
+            l2c_str = json.dumps(c2i)
+
+            logging.info('JSON created')
+
+            self.Variable.append(var_name)
+            self.view_cmd[var_name] = dep_str
+            self.l2d_cmd[var_name] = l2c_str
+
+            encode1 = dep_str #base64.b64encode(dep)
+            encode2 = l2c_str #base64.b64encode(c2i)
+            if var_name not in var_list:
+                logging.debug('Inserting values into dependen and line2cid')
+                try:
+                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + var_name + "\', \'" + encode1 + "\')")
+                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + var_name + "\', \'" + encode2 + "\')")
+                except:
+                    logging.error('Unable to insert into tables')
         except:
-            logging.error('Unable to read the provenance tables')
+            logging.error('Unable to update provenance due to error ' + str(sys.exc_info()[0]))
 
-        var_list = dep_db['view_id'].tolist()
-
-        logging.info('About to parse code')
-
-        dep, c2i = self.__parse_code(code_list)
-
-        logging.info('Parsed code')
-
-        #self.generate_graph(code_list, nb_name)
-        dep_str = json.dumps(dep)
-        l2c_str = json.dumps(c2i)
-
-        logging.info('JSON created')
-
-        self.Variable.append(var_name)
-        self.view_cmd[var_name] = dep_str
-        self.l2d_cmd[var_name] = l2c_str
-
-        encode1 = dep_str #base64.b64encode(dep)
-        encode2 = l2c_str #base64.b64encode(c2i)
-        if var_name not in var_list:
-            logging.debug('Inserting values into dependen and line2cid')
-            try:
-                self.eng.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + var_name + "\', \'" + encode1 + "\')")
-                self.eng.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + var_name + "\', \'" + encode2 + "\')")
-            except:
-                logging.error('Unable to insert into tables')
 
     def close_dbconnection(self):
         self.eng.close()
