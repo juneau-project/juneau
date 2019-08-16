@@ -63,7 +63,17 @@ class Store_Provenance:
         return True
 
     def add_cell(self, code, prev_node, var, cell_id, nb_name):
+        """
+        Stores the Jupyter cell in base64 encoded form, and adds a link to the previously
+        stored node (for cell provenance tracking)
 
+        :param code:
+        :param prev_node:
+        :param var:
+        :param cell_id:
+        :param nb_name:
+        :return:
+        """
         bcode = str(base64.b64encode(bytes(code,'utf-8')))
         matcher = NodeMatcher(self.graph_db)
         if bcode in self.code_dict:
