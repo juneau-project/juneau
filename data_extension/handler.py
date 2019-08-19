@@ -14,6 +14,7 @@ import data_extension.config as cfg
 from data_extension.store_graph import Store_Provenance
 from data_extension.store_prov import Store_Lineage
 
+
 from sqlalchemy.exc import NoSuchTableError
 #from multiprocessing import Pool, TimeoutError
 import concurrent.futures
@@ -56,20 +57,29 @@ search_test_class = None
 
 
 # Asynchronous storage of tables
-def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_class):
+def fn(output, store_table_name, var_name, var_code, var_nb_name, psql_db, store_prov_db_class):
     logging.info("Indexing new table " + store_table_name)
     try:
         output.to_sql(name='rtable' + store_table_name, con=psql_db, \
                           schema=cfg.sql_dbs, if_exists='replace', index=False)
+
         logging.info('Base table stored')
 
-        code_list = var_code.split("\\n#\\n")
+        try:
+            code_list = var_code.split("\\n#\\n")
 
-        logging.info(var_nb_name)
+            logging.info(var_nb_name)
 
-        logging.info(code_list)
+            logging.info(code_list)
 
-        store_prov_db_class.InsertTable_Model(store_table_name, code_list, var_nb_name)
+            store_prov_db_class.InsertTable_Model(store_table_name, var_name, code_list, var_nb_name)
+            indexed[store_table_name] = True
+        except:
+            logging.error(
+                'Unable to store provenance of ' + store_table_name + ' due to error' + str(sys.exc_info()[0]))
+
+        logging.info("Returning after indexing " + store_table_name)
+
     except ValueError:
         logging.error('Unable to store ' + store_table_name + ' due to value error')
     except NoSuchTableError:
@@ -80,7 +90,7 @@ def fn(output, store_table_name, var_code, var_nb_name, psql_db, store_prov_db_c
         logging.error('Unable to store ' + store_table_name + ' due to error ' + str(sys.exc_info()[0]))
         raise
 
-    logging.info("Returning after indexing " + store_table_name)
+
 
 
 class JuneauHandler(IPythonHandler):
@@ -117,6 +127,9 @@ class JuneauHandler(IPythonHandler):
 
         logging.info('Looking up variable ' + search_var)
 
+
+        #return json.dumps(vardic)
+
         output, error = data_extension.jupyter.request_var(kernel_id, search_var)
         #output, error = data_extension.jupyter.exec_ipython(kernel_id, search_var, 'print_var')
         logging.info('Returned with variable')
@@ -125,11 +138,17 @@ class JuneauHandler(IPythonHandler):
             sta = False
             return sta, error
         else:
-            sta = True
-            #logging.info('Parsing: ' + output)
-            var_obj = pd.read_json(output, orient='split')
+            try:
+                #logging.info('Parsing: ' + output)
+                var_obj = pd.read_json(output, orient='split')
+                sta = True
+            except:
+                logging.info('Parsing: ' + output)
+                sta = False
+                var_obj = None
 
-            return sta, var_obj
+
+        return sta, var_obj
 
     def fetch_kernel_id(self):
         self.kernel_id = str(self.data['kid'][0])[2:-1]
@@ -164,17 +183,31 @@ class JuneauHandler(IPythonHandler):
         var_to_store = str(self.data_to_store['var'][0])[2:-1]
         logging.info('Juneau indexing request: ' + var_to_store)
 
-        if var_to_store in indexed:
+        var_code = str(self.data_to_store['code'][0])[2:-1]
+        var_nb_name = str(self.data_to_store['nb_name'][0])[2:-1]
+        var_cell_id = int(str(self.data_to_store['cell_id'][0])[2:-1])
+        kernel_id = str(self.data_to_store['kid'][0])[2:-1]
+
+        var_nb_name = var_nb_name.replace('.ipynb', '')
+        var_nb_name = var_nb_name.split("_")
+        var_nb_name = "-".join(var_nb_name)
+
+
+        code_list = var_code.lower().strip("\\n#\\n").split("\\n#\\n")
+
+        if (len(str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)) < 58):
+            store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
+            var_nb_name = var_nb_name
+        else:
+            nb_len = (63 - len(str(var_cell_id)) - 2 - len(var_to_store) - 6)
+            var_nb_name = str(var_nb_name)[-nb_len:]
+            store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + var_nb_name
+
+        if (store_table_name in indexed) or (var_to_store.lower() not in code_list[-1]):
             logging.info('Request to index is already registered')
         else:
-            indexed[var_to_store] = True
-
-            var_code = str(self.data_to_store['code'][0])[2:-1]
-            var_nb_name = str(self.data_to_store['nb_name'][0])[2:-1]
-            var_cell_id = int(str(self.data_to_store['cell_id'][0])[2:-1])
-            kernel_id = str(self.data_to_store['kid'][0])[2:-1]
-
-            var_nb_name = var_nb_name.replace('.ipynb','')
+            logging.info(var_to_store.lower())
+            logging.info(code_list[-1])
 
             success, output = self.find_variable(var_to_store, kernel_id)
             if success:
@@ -201,9 +234,8 @@ class JuneauHandler(IPythonHandler):
                     logging.error('Unable to store in graph store due to error ' + str(sys.exc_info()[0]))
                 self.prev_nb = var_nb_name
 
-                store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
+                fn(output, store_table_name, var_to_store, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
 
-                fn(output, store_table_name, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
                 #res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
                 #                            self.psql_db, self.store_prov_db_class)
 

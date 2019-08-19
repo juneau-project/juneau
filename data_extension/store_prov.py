@@ -36,7 +36,7 @@ class Store_Lineage:
             #query2 = "CREATE SCHEMA graph_model;"
             query3 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".dependen (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
             query4 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".line2cid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
-
+            query5 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".lastliid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
 
             #try:
             #    cursor.execute(query1)
@@ -48,6 +48,7 @@ class Store_Lineage:
 #                cursor.execute(query2)
                 cursor.execute(query3)
                 cursor.execute(query4)
+                cursor.execute(query5)
                 conn.commit()
 
             except:
@@ -69,6 +70,16 @@ class Store_Lineage:
         self.view_cmd = {}
         self.l2d_cmd = {}
 
+    def __last_line_var(self, varname, code):
+        ret = 0
+        code = code.split("\n")
+        for id, i in enumerate(code):
+            if '=' not in i:
+                continue
+            j = i.split('=')
+            if varname in j[0]:
+                ret = id + 1
+        return ret
 
     def __parse_code(self, code_list):
 
@@ -77,30 +88,65 @@ class Store_Lineage:
         line2cid = {}
 
         lid = 1
+        fflg = False
         for cid, cell in enumerate(code_list):
+            logging.info(cid)
+            logging.info(cell)
             codes = cell.split("\\n")
+            new_codes = []
             for code in codes:
+                if code[:3].lower() == 'def':
+                    fflg = True
+                    continue
+
+                temp_code = code.strip(" ")
+                temp_code = temp_code.strip("\t")
+
+                if temp_code[:6].lower() == 'return':
+                    fflg = False
+                    continue
+
+
+                code = code.strip("\n")
+                code = code.strip(" ")
+                code = code.split("\"")
+                code = "'".join(code)
+                code = code.split("\\")
+                code = "".join(code)
+
+
                 line2cid[lid] = cid
                 lid = lid + 1
                 if len(code) == 0:
                     continue
                 if code[0] == '%':
-                    codes.remove(code)
+                    continue
                 if code[0] == '#':
-                    codes.remove(code)
+                    continue
 
-            all_code = all_code + '\n'.join(codes) + '\n'
+                try:
+                    ast.parse(code)
+                    if fflg == False:
+                        new_codes.append(code)
+                except:
+                    logging.info(code)
+
+
+
+            all_code = all_code + '\n'.join(new_codes) + '\n'
+
+        all_code = all_code.strip("\n")
 
         tree = ast.parse(all_code)
         test.visit(tree)
-        return test.dependency, line2cid
+        return test.dependency, line2cid, all_code
 
     def generate_graph(self, code_list, nb_name):
 
         #self.notebook = nb_name
         #self.nid = nid
 
-        dependency, line2cid = self.__parse_code(code_list)
+        dependency, line2cid, all_code = self.__parse_code(code_list)
         G = nx.DiGraph()
         for i in dependency.keys():
             left = dependency[i][0]
@@ -154,34 +200,47 @@ class Store_Lineage:
 
         return G, line2cid
 
-    def InsertTable_Model(self, var_name, code_list, nb_name):
+    def InsertTable_Model(self, store_name, var_name, code_list, nb_name):
 
         logging.info('Updating provenance...')
         try:
-            dep_db = pd.read_sql_table("dependen", self.eng, columns=['view_id'], schema = cfg.sql_graph)
+            dep_db = pd.read_sql_table("dependen", self.eng, schema = cfg.sql_graph)
             l2c_db = pd.read_sql_table("line2cid", self.eng, schema = cfg.sql_graph)
+            lid_db = pd.read_sql_table("lastliid", self.eng, schema = cfg.sql_graph)
 
             var_list = dep_db['view_id'].tolist()
+        except:
+            logging.error("reading prov from db failed")
 
-            dep, c2i = self.__parse_code(code_list)
+        try:
+            dep, c2i, all_code = self.__parse_code(code_list)
+            lid = self.__last_line_var(var_name, all_code)
+        except:
+            logging.error("parse code failed")
 
+        try:
             #self.generate_graph(code_list, nb_name)
             dep_str = json.dumps(dep)
             l2c_str = json.dumps(c2i)
+            lid_str = json.dumps(lid)
+
 
             logging.info('JSON created')
 
-            self.Variable.append(var_name)
-            self.view_cmd[var_name] = dep_str
-            self.l2d_cmd[var_name] = l2c_str
+            self.view_cmd[store_name] = dep_str
+            self.l2d_cmd[store_name] = l2c_str
 
             encode1 = dep_str #base64.b64encode(dep)
             encode2 = l2c_str #base64.b64encode(c2i)
-            if var_name not in var_list:
+
+            if store_name not in var_list and store_name not in self.Variable:
+
                 logging.debug('Inserting values into dependen and line2cid')
                 try:
-                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + var_name + "\', \'" + encode1 + "\')")
-                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + var_name + "\', \'" + encode2 + "\')")
+                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + store_name + "\', \'" + encode1 + "\')")
+                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + store_name + "\', \'" + encode2 + "\')")
+                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".lastliid VALUES (\'" + store_name + "\', \'" + lid_str + "\')")
+                    self.Variable.append(store_name)
                 except:
                     logging.error('Unable to insert into tables')
         except:

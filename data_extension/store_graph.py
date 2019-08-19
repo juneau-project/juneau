@@ -17,7 +17,7 @@ class Store_Provenance:
         self.graph_db = graph_eng #self.__connect2gdb()
         self.postgres_eng = postgres_eng
         self.code_dict = {}
-        self.__fetch_code_dict()
+
 
 
     def __initialize_code_dict(self):
@@ -74,8 +74,12 @@ class Store_Provenance:
         :param nb_name:
         :return:
         """
+        self.__fetch_code_dict()
+
         bcode = str(base64.b64encode(bytes(code,'utf-8')))
         matcher = NodeMatcher(self.graph_db)
+
+
         if bcode in self.code_dict:
             current_cell = matcher.match("Cell", source_code = bcode).first()
         else:
@@ -96,6 +100,10 @@ class Store_Provenance:
                 self.graph_db.push(cell_edge2)
 
             self.code_dict[bcode] = max_id + 1
+            try:
+                self.store_code_dict()
+            except:
+                logging.info("update code for neo4j failed!")
 
         var_name = str(cell_id) + "_" + var + "_" + nb_name
 
