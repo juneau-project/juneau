@@ -308,7 +308,7 @@ define([
 
     function code_exec_callback(msg) {
         var jsonVars = msg.content['text'];
-        var table_dataTypes = ['DataFrame', 'ndarray', 'Series', 'list'];
+        var table_dataTypes = ['DataFrame', 'ndarray', 'Series'];
 
         var notWellDefined = false;
         if (msg.content.evalue) 
@@ -484,42 +484,58 @@ define([
         });
     }
 
+//    function importtable(evt, data){
+//        var var_name = data.var_name;
+//        var kid = data.kid;
+//        var mode = data.mode;
+//        var data_json = {'var': var_name, 'kid':kid, 'mode': mode};
+//
+//        var send_url = utils.url_path_join(Jupyter.notebook.base_url, '/juneau');
+//        var return_data = ""
+//        var return_state = ""
+//
+//        $.ajax({
+//            url: send_url,
+//            type: 'GET',
+//            data: data_json,
+//            dataType: 'json',
+//            success : function (response) {
+//                return_state = response['state'];
+//                return_data = response['res'];
+//                if(return_state === 'true'){
+//                    var print_string = return_data.toString();
+//                    var cell = Jupyter.notebook.insert_cell_below('code');
+//                    cell.set_text("#Import New Table");
+//                    cell.execute();
+//                    var cell_id = Jupyter.notebook.get_selected_cells_indices()[0] + 1;
+//                    var rcell = Jupyter.notebook.insert_cell_below('code', cell_id);
+//
+//                    rcell.set_text('eng = juneau_connect()\n' + var_name + '_df = pd.read_sql_table(\'' + var_name + '\', eng)\n' + var_name + '_df');
+//                    rcell.execute();
+//                }
+//                else{
+//                    var print_string = 'print(\'the search table is not in this cell!\')';
+//                    console.log(print_string);
+//                }
+//            },
+//            error : utils.log_ajax_error
+//        });
+//    }
+
     function importtable(evt, data){
         var var_name = data.var_name;
         var kid = data.kid;
         var mode = data.mode;
         var data_json = {'var': var_name, 'kid':kid, 'mode': mode};
 
-        var send_url = utils.url_path_join(Jupyter.notebook.base_url, '/juneau');
-        var return_data = ""
-        var return_state = ""
+        var cell = Jupyter.notebook.insert_cell_below('code');
+        cell.set_text("#Import New Table");
+        cell.execute();
+        var cell_id = Jupyter.notebook.get_selected_cells_indices()[0] + 1;
+        var rcell = Jupyter.notebook.insert_cell_below('code', cell_id);
 
-        $.ajax({
-            url: send_url,
-            type: 'GET',
-            data: data_json,
-            dataType: 'json',
-            success : function (response) {
-                return_state = response['state'];
-                return_data = response['res'];
-                if(return_state === 'true'){
-                    var print_string = return_data.toString();
-                    var cell = Jupyter.notebook.insert_cell_below('code');
-                    cell.set_text("#Import New Table");
-                    cell.execute();
-                    var cell_id = Jupyter.notebook.get_selected_cells_indices()[0] + 1;
-                    var rcell = Jupyter.notebook.insert_cell_below('code', cell_id);
-
-                    rcell.set_text('eng = juneau_connect()\n' + var_name + '_df = pd.read_sql_table(\'' + var_name + '\', eng)\n' + var_name + '_df');
-                    rcell.execute();
-                }
-                else{
-                    var print_string = 'print(\'the search table is not in this cell!\')';
-                    console.log(print_string);
-                }
-            },
-            error : utils.log_ajax_error
-        });
+        rcell.set_text('eng = juneau_connect()\n' +'new_data_df = pd.read_sql_table(\'' + var_name + '\', eng)\n' + 'print(new_data_df.head())');
+        rcell.execute();
     }
 
     var dataset_inspector_init = function() {
