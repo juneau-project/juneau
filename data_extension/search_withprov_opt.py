@@ -15,10 +15,13 @@ from data_extension.table_db import generate_graph
 from data_extension.table_db import parse_code
 from data_extension.table_db import pre_vars
 from data_extension.table_db import last_line_var
+from data_extension.funclister import FuncLister
+import ast
 
 import data_extension.config as cfg
 
 import logging
+logging.basicConfig(level=logging.DEBUG)
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -58,30 +61,50 @@ class WithProv_Optimized(WithProv):
 
     def read_graph_of_notebook(self):
         Graphs = {}
-        dependency = pd.read_sql_table('dependen', self.eng, cfg.sql_graph)#, schema='graph_model')
-        line2cid = pd.read_sql_table('line2cid', self.eng, cfg.sql_graph)#, schema='graph_model')
+        dependency = pd.read_sql_table('dependen', self.eng, schema = cfg.sql_graph)#, schema='graph_model')
+        line2cid = pd.read_sql_table('line2cid', self.eng, schema = cfg.sql_graph)#, schema='graph_model')
+        lastliid = pd.read_sql_table('lastliid', self.eng, schema = cfg.sql_graph)
 
         dependency_store = {}
         line2cid_store = {}
+        lastliid_store = {}
 
         for index, row in dependency.iterrows():
             dependency_store[row['view_id']] = json.loads(row['view_cmd'])
+
         for index, row in line2cid.iterrows():
             line2cid_store[row['view_id']] = json.loads(row['view_cmd'])
 
+        for index, row in lastliid.iterrows():
+            lastliid_store[row['view_id']] = json.loads(row['view_cmd'])
+
+
         for nid in dependency_store.keys():
-            Graph = self.__generate_graph(nid, dependency_store[nid], line2cid_store[nid])
+            #Graph = self.__generate_graph(nid, dependency_store[nid], line2cid_store[nid])
             #print(Graph)
-            Graphs[nid] = Graph
+            try:
+                line_id = lastliid_store[nid]
+                nid_name = nid.split("_")[-1]
+                Graph = self.__generate_graph(nid_name, dependency_store[nid], line2cid_store[nid])
+                var_name = "_".join(nid.split("_")[1:-1])
+                logging.error(Graph)
+                query_name = 'var_' + var_name + '_' + str(line_id) + "_" + str(nid_name)
+                query_node = pre_vars(query_name, Graph)
+                Graphs[nid] = query_node
+            except:
+                continue
 
         return Graphs, line2cid_store
 
     def __generate_query_node_from_code(self, var_name, code):
-        code = '\n'.join([t for t in code.split('\\n') if len(t)> 0 and t[0]!='%'])
-        code = '\''.join(code.split('\\\''))
 
-        line_id = last_line_var(var_name, code)
-        dependency = parse_code(code)
+        code = '\n'.join([t for t in code.split('\\n') if len(t)> 0 and t[0]!='%' and t[0] != '#'])
+        code = '\''.join(code.split('\\\''))
+        code = code.split('\n')
+        dependency, _, all_code = self.__parse_code(code)
+
+        line_id = self.__last_line_var(var_name, all_code)
+        #dependency = parse_code(code)
         graph = generate_graph(dependency)
         query_name = 'var_' + var_name + '_' + str(line_id)
         query_node = pre_vars(query_name, graph)
@@ -112,6 +135,7 @@ class WithProv_Optimized(WithProv):
                     ele = ele[0]
 
                 new_node = 'var_' + ele + '_' + str(i) + '_' + str(nid)
+
                 G.add_node(new_node, cell_id=line2cid[i], line_id=i, var=ele)
 
                 # print(nbname)
@@ -142,6 +166,75 @@ class WithProv_Optimized(WithProv):
                     G.add_edge(new_node, candidate_node, label=ename)
 
         return G
+
+    def __parse_code(self, code_list):
+
+        test = FuncLister()
+        all_code = ""
+        line2cid = {}
+
+        lid = 1
+        fflg = False
+        for cid, cell in enumerate(code_list):
+            logging.info(cid)
+            logging.info(cell)
+            codes = cell.split("\\n")
+            new_codes = []
+            for code in codes:
+                if code[:3].lower() == 'def':
+                    fflg = True
+                    continue
+
+                temp_code = code.strip(" ")
+                temp_code = temp_code.strip("\t")
+
+                if temp_code[:6].lower() == 'return':
+                    fflg = False
+                    continue
+
+
+                code = code.strip("\n")
+                code = code.strip(" ")
+                code = code.split("\"")
+                code = "'".join(code)
+                code = code.split("\\")
+                code = "".join(code)
+
+
+                line2cid[lid] = cid
+                lid = lid + 1
+                if len(code) == 0:
+                    continue
+                if code[0] == '%':
+                    continue
+                if code[0] == '#':
+                    continue
+
+                try:
+                    ast.parse(code)
+                    if fflg == False:
+                        new_codes.append(code)
+                except:
+                    logging.info(code)
+
+            all_code = all_code + '\n'.join(new_codes) + '\n'
+
+        all_code = all_code.strip("\n")
+
+        tree = ast.parse(all_code)
+        test.visit(tree)
+        return test.dependency, line2cid, all_code
+
+    def __last_line_var(self, varname, code):
+        ret = 0
+        code = code.split("\n")
+        for id, i in enumerate(code):
+            if '=' not in i:
+                continue
+            j = i.split('=')
+            if varname in j[0]:
+                ret = id + 1
+        return ret
 
     def init_schema_mapping(self):
 
@@ -307,6 +400,8 @@ class WithProv_Optimized(WithProv):
     def search_additional_training_data(self, query, k, code, var_name, beta, theta):
 
         #introduce the schema mapping class
+        self.index()
+
         SM_test = SchemaMapping()
 
         #choose only top possible key columns
@@ -329,25 +424,33 @@ class WithProv_Optimized(WithProv):
         table_prov_rank = prov_class.search_score_rank(query_node)
         table_prov_score = {}
 
+
         for i, j in table_prov_rank:
-            if i[:3] != "var":
-                continue
+            table_prov_score["rtable" + i] = j
+        logging.info(table_prov_score)
+            # if i[:3] != "var":
+            #     continue
+            #
+            # t = i.split("_")
+            #
+            # #nid = t[-1]
+            # nid = "_".join(t[1:])
+            # logging.info(i)
+            # logging.info(nid)
+            #
+            # if(nid not in self.n_l2cid):
+            #     print("notebook " + str(nid) + " does not exist in " + str(self.n_l2cid.keys()))
+            #
+            # vname = '_'.join(t[1:-2])
+            #
+            # if(t[-2] not in self.n_l2cid[nid]):
+            #     continue
+            #
+            # cid = int(self.n_l2cid[nid][t[-2]])
+            #
+            # #table_prov_score["rtable" + str(cid) + "_" + vname.lower() + "_" + str(nid)] = j
+            # table_prov_score["rtable" + str(cid) + "_" + str(nid)] = j
 
-            t = i.split("_")
-
-            nid = t[-1]
-
-            if(nid not in self.n_l2cid):
-                print("notebook " + str(nid) + " does not exist in " + str(self.n_l2cid.keys()))
-
-            vname = '_'.join(t[1:-2])
-
-            if(t[-2] not in self.n_l2cid[nid]):
-                continue
-
-            cid = int(self.n_l2cid[nid][t[-2]])
-
-            table_prov_score["rtable" + str(cid) + "_" + vname.lower() + "_" + str(nid)] = j
 
         top_tables = []
         rank_candidate = []
@@ -356,6 +459,7 @@ class WithProv_Optimized(WithProv):
         for i in self.real_tables.keys():
             tname = i
             if tname not in table_prov_score:
+                logging.info(tname)
                 continue
             else:
                 gid = self.table_group[tname[6:]]
@@ -365,7 +469,7 @@ class WithProv_Optimized(WithProv):
                 tableS = query
                 tableR = self.real_tables[i]
                 SM, ms = self.schema_mapping(tableS, tableR, partial_mapping, gid)
-                rank_candidate.append((tname, table_prov_score[tname], SM))
+                rank_candidate.append((tname, float(1)/float(table_prov_score[tname] + 1), SM))
 
                 upp_col_sim = float(min(tableS.shape[1], tableR.shape[1])) / float(max(tableS.shape[1], tableR.shape[1]))
                 rank2.append(upp_col_sim)
@@ -469,24 +573,27 @@ class WithProv_Optimized(WithProv):
         table_prov_rank = prov_class.search_score_rank(query_node)
         table_prov_score = {}
         for i, j in table_prov_rank:
-            if i[:3] != "var":
-                continue
+            table_prov_score["rtable" + i] = j
 
-            t = i.split("_")
-
-            nid = t[-1]
-
-            if (nid not in self.n_l2cid):
-                print("notebook" + str(nid) + " does not exist")
-
-            vname = '_'.join(t[1:-2])
-
-            if (t[-2] not in self.n_l2cid[nid]):
-                continue
-
-            cid = int(self.n_l2cid[nid][t[-2]])
-
-            table_prov_score["rtable" + str(cid) + "_" + vname.lower() + "_" + str(nid)] = j
+        logging.info(table_prov_score)
+            # if i[:3] != "var":
+            #     continue
+            #
+            # t = i.split("_")
+            #
+            # nid = t[-1]
+            #
+            # if (nid not in self.n_l2cid):
+            #     print("notebook" + str(nid) + " does not exist")
+            #
+            # vname = '_'.join(t[1:-2])
+            #
+            # if (t[-2] not in self.n_l2cid[nid]):
+            #     continue
+            #
+            # cid = int(self.n_l2cid[nid][t[-2]])
+            #
+            # table_prov_score["rtable" + str(cid) + "_" + vname.lower() + "_" + str(nid)] = j
 
         top_tables = []
         rank_candidate = []

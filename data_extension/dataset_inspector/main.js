@@ -529,13 +529,13 @@ define([
         var data_json = {'var': var_name, 'kid':kid, 'mode': mode};
 
         var cell = Jupyter.notebook.insert_cell_below('code');
-        cell.set_text("#Import New Table");
+        cell.set_text("#Import New Table\neng = juneau_connect()\nnew_data_df = pd.read_sql_table(\'" + var_name + "\', eng)\nprint(new_data_df.head())");
         cell.execute();
-        var cell_id = Jupyter.notebook.get_selected_cells_indices()[0] + 1;
-        var rcell = Jupyter.notebook.insert_cell_below('code', cell_id);
+        //var cell_id = Jupyter.notebook.get_selected_cells_indices()[0] + 1;
+        //var rcell = Jupyter.notebook.insert_cell_below('code', cell_id);
 
-        rcell.set_text('eng = juneau_connect()\n' +'new_data_df = pd.read_sql_table(\'' + var_name + '\', eng)\n' + 'print(new_data_df.head())');
-        rcell.execute();
+        //rcell.set_text();
+        //rcell.execute();
     }
 
     var dataset_inspector_init = function() {
