@@ -104,8 +104,8 @@ class SearchProv:
         return Graphs
 
     def __init__(self, graphs):
-        self.Graphs = graphs
-        self.Graphs_Dependencies = self.__get_all_node_dependencies()
+        #self.Graphs = graphs
+        self.Graphs_Dependencies = graphs #self.__get_all_node_dependencies()
 
     def search_topk(self, query, k):
         return self.Graph_Edit_Dis(query, k)
@@ -113,9 +113,9 @@ class SearchProv:
     def search_score_rank(self, query):
         distance_rank = []
         for i in self.Graphs_Dependencies.keys():
-            for j in self.Graphs_Dependencies[i].keys():
-                dist = self.Star_Mapping_Dis(query, self.Graphs_Dependencies[i][j])
-                distance_rank.append((j, dist))
+            #for j in self.Graphs_Dependencies[i].keys():
+            dist = self.Star_Mapping_Dis(query, self.Graphs_Dependencies[i])
+            distance_rank.append((i, dist))
         distance_rank = sorted(distance_rank, key=lambda d: d[1])
         return distance_rank
 
