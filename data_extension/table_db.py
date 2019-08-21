@@ -9,14 +9,19 @@ import ast
 import data_extension.config as cfg
 
 special_type = ['np', 'pd']
+from sqlalchemy.orm import sessionmaker
 
 
-def create_tables_as_needed(eng):
+def create_tables_as_needed(engine, eng):
     """
     Creates the PostgreSQL schema and Juneau's metadata tables, if necessary
 
     :param eng: SQL engine
     """
+    # Open the session
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
     eng.execute("create schema if not exists " + cfg.sql_dbs + ';')
     eng.execute("create schema if not exists " + cfg.sql_graph + ';')
     eng.execute("create schema if not exists " + cfg.sql_provenance + ';')
@@ -30,6 +35,11 @@ def create_tables_as_needed(eng):
                 "view_id character varying(1000)," + \
                 "view_cmd text" + \
                 ");")
+    # Commit the changes
+    session.commit()
+
+    # Close the session
+    session.close()
 
 
 def connect2db(dbname):
@@ -44,7 +54,7 @@ def connect2db(dbname):
                                "/" + dbname)#cfg.sql_dbname)
 
         eng = engine.connect()
-        create_tables_as_needed(eng)
+        create_tables_as_needed(engine, eng)
 
         return eng
     except:
@@ -54,12 +64,43 @@ def connect2db(dbname):
         eng.connection.connection.set_isolation_level(0)
         eng.execute("create database " + dbname + ';')#'#cfg.sql_dbname + ';')
 
-        create_tables_as_needed(eng)
+        create_tables_as_needed(engine, eng)
         eng.connection.connection.set_isolation_level(1)
 
         engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
                                "/" + dbname)#cfg.sql_dbname)
         return engine.connect()
+
+def connect2db_engine(dbname):
+    """
+    Connect to the PostgreSQL instance, creating it if necessary
+
+    :param dbname:
+    :return:
+    """
+    try:
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
+                               "/" + dbname, isolation_level="AUTOCOMMIT")#cfg.sql_dbname)
+
+        eng = engine.connect()
+        create_tables_as_needed(engine, eng)
+        eng.close()
+
+        return engine
+    except:
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+                               "/")
+        eng = engine.connect()
+        eng.connection.connection.set_isolation_level(0)
+        eng.execute("create database " + dbname + ';')#'#cfg.sql_dbname + ';')
+
+        create_tables_as_needed(engine, eng)
+        eng.connection.connection.set_isolation_level(1)
+        eng.close()
+
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
+                               "/" + dbname, isolation_level="AUTOCOMMIT")#cfg.sql_dbname)
+        return engine
 
 def connect2gdb():
     """

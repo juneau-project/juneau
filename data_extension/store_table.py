@@ -1,21 +1,38 @@
+import psycopg2
+import timeit
+import pandas as pd
+import numpy as np
+
+from sqlalchemy import create_engine
+
+from data_extension.cost_func import compute_table_size
+
+import data_extension.config as cfg
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+
 class Store_Seperately:
 
     def __connect2db(self):
-        engine = create_engine("postgresql://" + user_name + ":" + password + "@localhost/" + self.dbname)
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" +
+                               cfg.sql_password + "@localhost/" + self.dbname)
         return engine.connect()
 
     def __connect2db_init(self):
         # Define our connection string
-        conn_string = "host='localhost' dbname=\'" + self.dbname + "\' user=\'" + user_name + "\' password=\'" + password + "\'"
+        conn_string = "host='localhost' dbname=\'" + self.dbname + "\' user=\'" + cfg.sql_name + \
+                      "\' password=\'" + cfg.sql_password + "\'"
 
-        # print the connection string we will use to connect
-        print("Connecting to database\n	->%s" % (conn_string))
+        # logging.info the connection string we will use to connect
+        logging.info("Connecting to database\n	->%s" % (conn_string))
 
         # get a connection, if a connect cannot be made an exception will be raised here
         try:
             # conn.cursor will return a cursor object, you can use this cursor to perform queries
             conn = psycopg2.connect(conn_string)
-            print("Connecting Database Succeeded!\n")
+            logging.info("Connecting Database Succeeded!\n")
             cursor = conn.cursor()
             query1 = "DROP SCHEMA IF EXISTS rowstore CASCADE;"
             query2 = "CREATE SCHEMA rowstore;"
@@ -24,25 +41,25 @@ class Store_Seperately:
                 cursor.execute(query1)
                 conn.commit()
             except:
-                print("Drop Schema Failed!\n")
+                logging.error("Drop Schema Failed!\n")
             try:
                 cursor.execute(query2)
                 conn.commit()
             except:
-                print("Create Schema Failed!\n")
+                logging.error("Create Schema Failed!\n")
             cursor.close()
             conn.close()
             return True
 
         except:
-            print("Connecting Database Failed!\n")
+            logging.info("Connecting Database Failed!\n")
             return False
 
     def __init__(self, dbname, time_flag):
 
         self.dbname = dbname
         self.__connect2db_init()
-        print("heresss")
+        logging.info("heresss")
         self.eng = self.__connect2db()
         self.time_flag = time_flag
         self.Variable = []
@@ -58,10 +75,11 @@ class Store_Seperately:
 
         if self.time_flag == True:
             end_time = timeit.default_timer()
-            print(end_time - start_time)
+            logging.info(end_time - start_time)
 
     def Query_Tables_Times(self, vid):
-        eng = psycopg2.connect("dbname=" + self.dbname + " user=\'" + user_name + "\' password=\'" + password + "\'")
+        eng = psycopg2.connect("dbname=" + self.dbname + " user=\'" +
+                               cfg.sql_name + "\' password=\'" + cfg.sql_password + "\'")
         cur = eng.cursor(cursor_factory=PreparingCursor)
         time_total = []
         for var in self.Variable:
@@ -92,7 +110,7 @@ class Store_Seperately:
             try:
                 table = pd.read_sql_table(tn, eng, schema=sch)
             except:
-                print(tn)
+                logging.error(tn)
                 continue
             storage_number.append(compute_table_size(table))
         eng.close()

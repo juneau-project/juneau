@@ -14,53 +14,58 @@ logging.basicConfig(level=logging.DEBUG)
 
 class Store_Lineage:
 
+    conn = None
+
     # def __connect2db(self):
     #     engine = create_engine("postgresql://" + user_name + ":" + password + "@localhost/" + self.dbname)
     #     return engine.connect()
 
     def __connect2db_init(self):
-        # Define our connection string
-        conn_string = "host=\'" + cfg.sql_host + "\' dbname=\'" + cfg.sql_dbname + \
-                      "\' user=\'" + cfg.sql_name + "\' password=\'" + cfg.sql_password + "\'"
-
-        # print the connection string we will use to connect
-        #logging.info("Connecting to database\n	->%s" % (conn_string))
-
         # get a connection, if a connect cannot be made an exception will be raised here
-        try:
-            # conn.cursor will return a cursor object, you can use this cursor to perform queries
-            conn = psycopg2.connect(conn_string)
-            logging.info("Connecting Database Succeeded!\n")
-            cursor = conn.cursor()
-            #query1 = "DROP SCHEMA IF EXISTS graph_model CASCADE;"
-            #query2 = "CREATE SCHEMA graph_model;"
-            query3 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".dependen (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
-            query4 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".line2cid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
-            query5 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".lastliid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
+        if not self.conn:
+            # Define our connection string
+            conn_string = "host=\'" + cfg.sql_host + "\' dbname=\'" + cfg.sql_dbname + \
+                          "\' user=\'" + cfg.sql_name + "\' password=\'" + cfg.sql_password + "\'"
 
-            #try:
-            #    cursor.execute(query1)
-            #    conn.commit()
+            # print the connection string we will use to connect
+            # logging.info("Connecting to database\n	->%s" % (conn_string))
 
-#            except:
-#                print("Drop Schema Failed!\n")
             try:
-#                cursor.execute(query2)
-                cursor.execute(query3)
-                cursor.execute(query4)
-                cursor.execute(query5)
-                conn.commit()
+                # conn.cursor will return a cursor object, you can use this cursor to perform queries
+                conn = psycopg2.connect(conn_string)
+                logging.info("Connecting Database Succeeded!\n")
+                cursor = conn.cursor()
+                #query1 = "DROP SCHEMA IF EXISTS graph_model CASCADE;"
+                #query2 = "CREATE SCHEMA graph_model;"
+                query3 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".dependen (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
+                query4 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".line2cid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
+                query5 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".lastliid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
+
+                #try:
+                #    cursor.execute(query1)
+                #    conn.commit()
+
+    #            except:
+    #                print("Drop Schema Failed!\n")
+                try:
+    #                cursor.execute(query2)
+                    cursor.execute(query3)
+                    cursor.execute(query4)
+                    cursor.execute(query5)
+                    conn.commit()
+
+                except:
+                    logging.error("Create Tables Failed!\n")
+
+                cursor.close()
+                conn.close()
+                return True
 
             except:
-                logging.error("Create Tables Failed!\n")
-
-            cursor.close()
-            conn.close()
+                logging.error("Connecting Database Failed!\n")
+                return False
+        else:
             return True
-
-        except:
-            logging.error("Connecting Database Failed!\n")
-            return False
 
     def __init__(self, psql_eng):
 
@@ -203,14 +208,17 @@ class Store_Lineage:
     def InsertTable_Model(self, store_name, var_name, code_list, nb_name):
 
         logging.info('Updating provenance...')
+        conn = self.eng.connect()
         try:
-            dep_db = pd.read_sql_table("dependen", self.eng, schema = cfg.sql_graph)
-            l2c_db = pd.read_sql_table("line2cid", self.eng, schema = cfg.sql_graph)
-            lid_db = pd.read_sql_table("lastliid", self.eng, schema = cfg.sql_graph)
+            dep_db = pd.read_sql_table("dependen", conn, schema = cfg.sql_graph)
+            l2c_db = pd.read_sql_table("line2cid", conn, schema = cfg.sql_graph)
+            lid_db = pd.read_sql_table("lastliid", conn, schema = cfg.sql_graph)
 
             var_list = dep_db['view_id'].tolist()
         except:
             logging.error("reading prov from db failed")
+        finally:
+            conn.close()
 
         try:
             dep, c2i, all_code = self.__parse_code(code_list)
@@ -236,13 +244,16 @@ class Store_Lineage:
             if store_name not in var_list and store_name not in self.Variable:
 
                 logging.debug('Inserting values into dependen and line2cid')
+                conn = self.eng.connect()
                 try:
-                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + store_name + "\', \'" + encode1 + "\')")
-                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + store_name + "\', \'" + encode2 + "\')")
-                    self.eng.execute("INSERT INTO " + cfg.sql_graph + ".lastliid VALUES (\'" + store_name + "\', \'" + lid_str + "\')")
+                    conn.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + store_name + "\', \'" + encode1 + "\')")
+                    conn.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + store_name + "\', \'" + encode2 + "\')")
+                    conn.execute("INSERT INTO " + cfg.sql_graph + ".lastliid VALUES (\'" + store_name + "\', \'" + lid_str + "\')")
                     self.Variable.append(store_name)
                 except:
                     logging.error('Unable to insert into tables')
+                finally:
+                    conn.close()
         except:
             logging.error('Unable to update provenance due to error ' + str(sys.exc_info()[0]))
 
