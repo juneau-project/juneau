@@ -89,10 +89,11 @@ class SearchProv:
         gnodes_subgraph = {}
         for g in self.Graphs.keys():
             graph = self.Graphs[g]
-            gnodes_subgraph[g] = {}
-            gnodes = list(graph.nodes)
-            for n in gnodes:
-                gnodes_subgraph[g][n] = self.__get_pre_depedencies4node(graph, n)
+            if graph and 'nodes' in graph:
+                gnodes_subgraph[g] = {}
+                gnodes = list(graph.nodes)
+                for n in gnodes:
+                    gnodes_subgraph[g][n] = self.__get_pre_depedencies4node(graph, n)
         return gnodes_subgraph
 
     def __read_models(self):

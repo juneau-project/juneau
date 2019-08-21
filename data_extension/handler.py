@@ -294,11 +294,11 @@ class JuneauHandler(IPythonHandler):
                     logging.error('Unable to store in graph store due to error ' + str(sys.exc_info()[0]))
                 self.prev_nb = var_nb_name
 
-                fn(output, store_table_name, var_to_store, var_code, var_nb_name,
-                   self.psql_engine, self.store_prov_db_class)
+                #fn(output, store_table_name, var_to_store, var_code, var_nb_name,
+                #   self.psql_engine, self.store_prov_db_class)
 
-                #res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                #                            self.psql_engine, self.store_prov_db_class)
+                res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
+                                            self.psql_engine, self.store_prov_db_class)
 
                 #res.result()
 
