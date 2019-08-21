@@ -59,10 +59,6 @@ class TableSearch:
 
 def search_tables(search_test, var_df, mode, code, var_name):
 
-    #if mode == 0:
-    #    table = pd.read_sql_table(var_df, search_test.eng, schema = 'rowstore')
-    #    return table.to_html()
-    #else:
     query_table = var_df #dataframe
     query_name = var_name #name of the table
 

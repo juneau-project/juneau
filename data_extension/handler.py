@@ -9,23 +9,26 @@ from data_extension.search_withprov_opt import WithProv_Optimized
 from data_extension.search import search_tables
 import data_extension.jupyter
 from data_extension.table_db import connect2gdb
-from data_extension.table_db import connect2db
+from data_extension.table_db import connect2db, connect2db_engine
 import data_extension.config as cfg
 from data_extension.store_graph import Store_Provenance
 from data_extension.store_prov import Store_Lineage
 
-
+import sqlalchemy
 from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Numeric
+from sqlalchemy.orm import sessionmaker
 #from multiprocessing import Pool, TimeoutError
 import concurrent.futures
 
 import os
 import sys
 
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
+#if sys.version_info[0] < 3:
+#    from StringIO import StringIO
+#else:
+from io import StringIO
 
 import logging
 
@@ -55,13 +58,65 @@ types_to_include = [ \
 
 search_test_class = None
 
+# From https://stackoverflow.com/questions/31997859/bulk-insert-a-pandas-dataframe-using-sqlalchemy
+def write_df(engine, df_to_be_written, table_name, my_schema):
+    Base = declarative_base()
+
+    # Declaration of the class in order to write into the database. This structure is standard and should align with SQLAlchemy's doc.
+    class Current(Base):
+        __tablename__ = table_name
+
+        id = Column(Integer, primary_key=True)
+        Date = Column(String(500))
+        Type = Column(String(500))
+        Value = Column(Numeric())
+
+        def __repr__(self):
+            return "(id='%s', Date='%s', Type='%s', Value='%s')" % (self.id, self.Date, self.Type, self.Value)
+
+    # The orient='records' is the key of this, it allows to align with the format mentioned in the doc to insert in bulks.
+    listToWrite = df_to_be_written.to_dict(orient='records')
+
+    metadata = sqlalchemy.schema.MetaData(bind=engine, reflect=True)
+    table = sqlalchemy.Table(table_name, metadata, autoload=True, schema=my_schema)
+
+    # Open the session
+    Session = sessionmaker(bind=engine)
+    conn = engine.connect()
+    session = Session()
+
+    logging.info("Starting with drop, create, insert")
+    # Inser the dataframe into the database in one bulk
+    try:
+        conn.execute(table.drop())
+    except:
+        pass
+
+    try:
+        conn.execute(table.create())
+    except:
+        pass
+
+    try:
+        conn.execute(table.insert(), listToWrite)
+    except:
+        logging.error("Could not insert into table")
+
+    # Commit the changes
+    session.commit()
+
+    # Close the session
+    session.close()
+    conn.close()
 
 # Asynchronous storage of tables
-def fn(output, store_table_name, var_name, var_code, var_nb_name, psql_db, store_prov_db_class):
+def fn(output, store_table_name, var_name, var_code, var_nb_name, psql_engine, store_prov_db_class):
     logging.info("Indexing new table " + store_table_name)
+    conn = psql_engine.connect()
     try:
-        output.to_sql(name='rtable' + store_table_name, con=psql_db, \
+        output.to_sql(name='rtable' + store_table_name, con=conn, \
                           schema=cfg.sql_dbs, if_exists='replace', index=False)
+        #write_df(psql_engine, output, 'rtable' + store_table_name, cfg.sql_dbs)
 
         logging.info('Base table stored')
 
@@ -89,7 +144,8 @@ def fn(output, store_table_name, var_name, var_code, var_nb_name, psql_db, store
     except:
         logging.error('Unable to store ' + store_table_name + ' due to error ' + str(sys.exc_info()[0]))
         raise
-
+    finally:
+        conn.close()
 
 
 
@@ -103,7 +159,7 @@ class JuneauHandler(IPythonHandler):
     data = {}
     data_trans = {}
     graph_db = None
-    psql_db = None
+    psql_engine = None
     store_graph_db_class = None
     store_prov_db_class = None
     prev_node = None
@@ -213,14 +269,18 @@ class JuneauHandler(IPythonHandler):
             if success:
                 if not self.graph_db:
                     self.graph_db = connect2gdb()
-                if not self.psql_db:
-                    self.psql_db = connect2db(cfg.sql_dbname)
+                if not self.psql_engine:
+                    self.psql_engine = connect2db_engine(cfg.sql_dbname)
 
                 if not self.store_graph_db_class:
-                    self.store_graph_db_class = Store_Provenance(self.psql_db, self.graph_db)
+                    psql_db = self.psql_engine#.connect()
+                    self.store_graph_db_class = Store_Provenance(psql_db, self.graph_db)
+                    #psql_db.close()
 
                 if not self.store_prov_db_class:
-                    self.store_prov_db_class = Store_Lineage(self.psql_db)
+                    psql_db = self.psql_engine#.connect()
+                    self.store_prov_db_class = Store_Lineage(psql_db)
+                    #psql_db.close()
 
                 if self.prev_nb != var_nb_name:
                     self.prev_node = None
@@ -234,10 +294,11 @@ class JuneauHandler(IPythonHandler):
                     logging.error('Unable to store in graph store due to error ' + str(sys.exc_info()[0]))
                 self.prev_nb = var_nb_name
 
-                fn(output, store_table_name, var_to_store, var_code, var_nb_name, self.psql_db, self.store_prov_db_class)
+                fn(output, store_table_name, var_to_store, var_code, var_nb_name,
+                   self.psql_engine, self.store_prov_db_class)
 
                 #res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                #                            self.psql_db, self.store_prov_db_class)
+                #                            self.psql_engine, self.store_prov_db_class)
 
                 #res.result()
 
@@ -303,10 +364,11 @@ def load_jupyter_server_extension(nb_server_app):
     """
     nb_server_app.log.info("Juneau extension loading...")
     # search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
-    loader = threading.Thread(target=background_load, args=(nb_server_app,))
+    #loader = threading.Thread(target=background_load, args=(nb_server_app,))
+    background_load(nb_server_app)
     web_app = nb_server_app.web_app
     host_pattern = r'.*$'
     route_pattern = url_path_join(web_app.settings['base_url'], '/juneau')
     web_app.add_handlers(host_pattern, [(route_pattern, JuneauHandler)])
     nb_server_app.log.info("Juneau extension loaded!")
-    loader.start()
+    #loader.start()

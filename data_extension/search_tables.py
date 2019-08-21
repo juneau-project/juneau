@@ -1,4 +1,4 @@
-from data_extension.table_db import connect2db, connect2gdb
+from data_extension.table_db import connect2db_engine, connect2gdb
 
 import copy
 import numpy as np
@@ -21,18 +21,20 @@ class SearchTables:
 
     def __init__(self, dbname, schema=None):
         self.query = None
-        self.eng = connect2db(dbname)
+        self.eng = connect2db_engine(dbname)
         self.geng = connect2gdb()
 
         self.real_tables = {}
+        conn = self.eng.connect()
 
         if schema:
             logging.info('Indexing existing tables from data lake')
-            self.tables = fetch_all_table_names(schema, self.eng)
+            self.tables = fetch_all_table_names(schema, conn)
+
             count = 0
             for i in self.tables:
                 try:
-                    table_r = pd.read_sql_table(i, self.eng, schema=schema)
+                    table_r = pd.read_sql_table(i, conn, schema=schema)
                     if 'Unnamed: 0' in table_r.columns:
                         table_r.drop(['Unnamed: 0'], axis=1, inplace=True)
                     self.real_tables[i] = table_r
@@ -54,11 +56,11 @@ class SearchTables:
                     continue
         else:
             logging.info('Indexing views from data lake')
-            self.tables = fetch_all_views(self.eng)
+            self.tables = fetch_all_views(conn)#self.eng)
             count = 0
             for i in self.tables:
                 try:
-                    table_r = pd.read_sql_table(i, self.eng)
+                    table_r = pd.read_sql_table(i, conn)#self.eng)
                     self.real_tables[i] = table_r
                     count = count + 1
 
@@ -77,6 +79,7 @@ class SearchTables:
                     logging.error("Unexpected error:", sys.exc_info()[0])
                     continue
 
+        conn.close()
         logging.info('%s tables detected in the database.'%len(self.real_tables.keys()))
 
         self.init_schema_mapping()

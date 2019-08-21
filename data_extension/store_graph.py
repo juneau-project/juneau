@@ -27,16 +27,19 @@ class Store_Provenance:
             query2 = "CREATE SCHEMA nb_provenance;"
             query3 = "CREATE TABLE nb_provenance.code_dict (code VARCHAR(1000), cell_id INTEGER);"
 
+            conn = self.postgres_eng.connect()
             try:
-                self.postgres_eng.execute(query1)
+                conn.execute(query1)
             except:
                 logging.error("store provenance: DROP PROVENANCE SCHEMA FAILED!\n")
 
             try:
-                self.postgres_eng.execute(query2)
-                self.postgres_eng.execute(query3)
+                conn.execute(query2)
+                conn.execute(query3)
             except:
                 logging.error("store provenance: CREATE PROVENANCE SCHEMA FAILED\n")
+            finally:
+                conn.close()
 
             return True
         except:
@@ -44,13 +47,16 @@ class Store_Provenance:
             return False
 
     def __fetch_code_dict(self):
+        conn = self.postgres_eng.connect()
         try:
-            code_table = pd.read_sql_table('code_dict', self.postgres_eng, schema = 'nb_provenance')
+            code_table = pd.read_sql_table('code_dict', conn, schema = 'nb_provenance')
             for index, row in code_table.iterrows():
                 self.code_dict[row['code']] = int(row['cell_id'])
+            conn.close()
             return True
         except:
             logging.error("store provenance: Reading Code Table Failed!\n")
+            conn.close()
             return False
 
     def store_code_dict(self):
@@ -59,7 +65,9 @@ class Store_Provenance:
             dict_store['code'].append(i)
             dict_store['cell_id'].append(self.code_dict[i])
         dict_store_code = pd.DataFrame.from_dict(dict_store)
-        dict_store_code.to_sql('code_dict', self.postgres_eng, schema = 'nb_provenance', if_exists = 'replace')
+        conn = self.postgres_eng.connect()
+        dict_store_code.to_sql('code_dict', conn, schema = 'nb_provenance', if_exists = 'replace')
+        conn.close()
         return True
 
     def add_cell(self, code, prev_node, var, cell_id, nb_name):
