@@ -82,8 +82,11 @@ class Store_Lineage:
             if '=' not in i:
                 continue
             j = i.split('=')
+            j = [t.strip(" ") for t in j]
+
             if varname in j[0]:
-                ret = id + 1
+                if varname == j[0][-len(varname):]:
+                    ret = id + 1
         return ret
 
     def __parse_code(self, code_list):
@@ -119,20 +122,25 @@ class Store_Lineage:
                 code = code.split("\\")
                 code = "".join(code)
 
-
-                line2cid[lid] = cid
-                lid = lid + 1
                 if len(code) == 0:
                     continue
                 if code[0] == '%':
                     continue
                 if code[0] == '#':
                     continue
+                if code[0] == " ":
+                    continue
+                if code == "":
+                    continue
+                if code == "\n":
+                    continue
 
                 try:
                     ast.parse(code)
                     if fflg == False:
                         new_codes.append(code)
+                        line2cid[lid] = cid
+                        lid = lid + 1
                 except:
                     logging.info(code)
 
@@ -141,6 +149,10 @@ class Store_Lineage:
             all_code = all_code + '\n'.join(new_codes) + '\n'
 
         all_code = all_code.strip("\n")
+
+        all_code = all_code.split("\n")
+        all_code = [t for t in all_code if t != ""]
+        all_code = "\n".join(all_code)
 
         tree = ast.parse(all_code)
         test.visit(tree)

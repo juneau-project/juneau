@@ -58,6 +58,15 @@ types_to_include = [ \
 
 search_test_class = None
 
+def handle_superlong_nbname(nb_name):
+    nb_name = nb_name.split("/")
+    if(len(nb_name) > 2):
+        nb_name = nb_name[-2:]
+    nb_name = "".join(nb_name)
+    if(len(nb_name) > 25):
+        nb_name = nb_name[-25:]
+    return nb_name
+
 # From https://stackoverflow.com/questions/31997859/bulk-insert-a-pandas-dataframe-using-sqlalchemy
 def write_df(engine, df_to_be_written, table_name, my_schema):
     Base = declarative_base()
@@ -245,28 +254,31 @@ class JuneauHandler(IPythonHandler):
         kernel_id = str(self.data_to_store['kid'][0])[2:-1]
 
         var_nb_name = var_nb_name.replace('.ipynb', '')
+        var_nb_name = var_nb_name.replace('-', '')
         var_nb_name = var_nb_name.split("_")
-        var_nb_name = "-".join(var_nb_name)
+        var_nb_name = "".join(var_nb_name)
+        var_nb_name = handle_superlong_nbname(var_nb_name)
 
 
-        code_list = var_code.lower().strip("\\n#\\n").split("\\n#\\n")
+        code_list = var_code.strip("\\n#\\n").split("\\n#\\n")
 
-        if (len(str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)) < 58):
-            store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
-            var_nb_name = var_nb_name
-        else:
-            nb_len = (63 - len(str(var_cell_id)) - 2 - len(var_to_store) - 6)
-            var_nb_name = str(var_nb_name)[-nb_len:]
-            store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + var_nb_name
+        store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
 
-        if (store_table_name in indexed) or (var_to_store.lower() not in code_list[-1]):
+        logging.info("stored table ")
+        logging.info(indexed)
+
+        if (store_table_name in indexed) or (var_to_store not in code_list[-1]):
             logging.info('Request to index is already registered')
         else:
-            logging.info(var_to_store.lower())
+            logging.info("Start to store "+ var_to_store)
+            logging.info(var_to_store)
             logging.info(code_list[-1])
 
             success, output = self.find_variable(var_to_store, kernel_id)
             if success:
+                logging.info("Get Value of " + var_to_store)
+                logging.info(output.head())
+
                 if not self.graph_db:
                     self.graph_db = connect2gdb()
                 if not self.psql_engine:
@@ -301,6 +313,8 @@ class JuneauHandler(IPythonHandler):
                                             self.psql_engine, self.store_prov_db_class)
 
                 #res.result()
+            else:
+                logging.error("find variable failed!")
 
         self.data_trans = {'res': "", 'state': str('true')}
         self.write(json.dumps(self.data_trans))

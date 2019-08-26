@@ -5,6 +5,7 @@ import json
 import random
 import timeit
 import networkx as nx
+import sys
 
 from data_extension.schemamapping import SchemaMapping
 from data_extension.search import special_type
@@ -24,6 +25,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
 
 class WithProv_Optimized(WithProv):
 
@@ -84,15 +87,25 @@ class WithProv_Optimized(WithProv):
             #print(Graph)
             try:
                 line_id = lastliid_store[nid]
+                #logging.info(line_id)
+                #logging.info(line2cid_store[nid])
                 nid_name = nid.split("_")[-1]
                 Graph = self.__generate_graph(nid_name, dependency_store[nid], line2cid_store[nid])
                 var_name = "_".join(nid.split("_")[1:-1])
-                logging.error(Graph)
-                query_name = 'var_' + var_name + '_' + str(line_id) + "_" + str(nid_name)
+
+                query_name = 'var_' + var_name + '_' + str(line2cid_store[nid][str(line_id)]) + "_" + str(nid_name)
+
+                #logging.info(query_name)
+                #logging.info(list(Graph.nodes))
+
+
                 query_node = pre_vars(query_name, Graph)
                 Graphs[nid] = query_node
+                logging.info(nid)
             except:
-                continue
+                logging.error("Can not generate the graph!!! " + str(sys.exc_info()[0]))
+
+        logging.info("HEHSHSHSHSH")
 
         return Graphs, line2cid_store
 
@@ -102,11 +115,17 @@ class WithProv_Optimized(WithProv):
         code = '\''.join(code.split('\\\''))
         code = code.split('\n')
         dependency, _, all_code = self.__parse_code(code)
-
+        logging.info(all_code)
+        logging.info(dependency)
         line_id = self.__last_line_var(var_name, all_code)
+        logging.info(line_id)
         #dependency = parse_code(code)
         graph = generate_graph(dependency)
+        logging.info("Output Graph")
+        logging.info(list(graph.nodes))
+
         query_name = 'var_' + var_name + '_' + str(line_id)
+
         query_node = pre_vars(query_name, graph)
         return query_node
 
@@ -127,14 +146,14 @@ class WithProv_Optimized(WithProv):
             for ele in left:
                 if type(ele) is tuple or type(ele) is list:
                     ele = ele[0]
-                left_node.append('var_' + ele + '_' + str(i) + '_' + str(nid))
+                left_node.append('var_' + ele + '_' + str(line2cid[i]) + '_' + str(nid))
             # print('left',left_node)
 
             for ele in left:
                 if type(ele) is tuple or type(ele) is list:
                     ele = ele[0]
 
-                new_node = 'var_' + ele + '_' + str(i) + '_' + str(nid)
+                new_node = 'var_' + ele + '_' + str(line2cid[i]) + '_' + str(nid)
 
                 G.add_node(new_node, cell_id=line2cid[i], line_id=i, var=ele)
 
@@ -145,6 +164,7 @@ class WithProv_Optimized(WithProv):
                     rankbyline = []
                     for cand in candidate_list:
                         # print('cand', cand)
+
                         if G.nodes[cand]['var'] == dep:
                             if cand in left_node:
                                 # print(cand)
@@ -176,8 +196,8 @@ class WithProv_Optimized(WithProv):
         lid = 1
         fflg = False
         for cid, cell in enumerate(code_list):
-            logging.info(cid)
-            logging.info(cell)
+            #logging.info(cid)
+            #logging.info(cell)
             codes = cell.split("\\n")
             new_codes = []
             for code in codes:
@@ -232,8 +252,11 @@ class WithProv_Optimized(WithProv):
             if '=' not in i:
                 continue
             j = i.split('=')
+            j = [t.strip(" ") for t in j]
+
             if varname in j[0]:
-                ret = id + 1
+                if varname == j[0][-len(varname):]:
+                    ret = id + 1
         return ret
 
     def init_schema_mapping(self):
@@ -543,7 +566,7 @@ class WithProv_Optimized(WithProv):
 
         return rtables
 
-    def search_alternative_features(self, query, k, code, var_name, alpha, beta, theta, thres_key_prune, thres_key_cache):
+    def search_alternative_features(self, query, k, code, var_name, alpha, beta, gamma, theta, thres_key_prune, thres_key_cache):
 
         # choose only top possible key columns
         query_col = self.sketch_query_cols(query)
@@ -573,7 +596,7 @@ class WithProv_Optimized(WithProv):
         table_prov_rank = prov_class.search_score_rank(query_node)
         table_prov_score = {}
         for i, j in table_prov_rank:
-            table_prov_score["rtable" + i] = j
+            table_prov_score["rtable" + i.lower()] = j
 
         logging.info(table_prov_score)
             # if i[:3] != "var":
@@ -599,17 +622,19 @@ class WithProv_Optimized(WithProv):
         rank_candidate = []
         rank2 = []
 
+        tableS = query
         for i in self.real_tables.keys():
             tname = i
 
             if tname not in table_prov_score:
                 continue
             else:
+                logging.info(tname)
                 gid = self.table_group[tname[6:]]
                 if gid not in partial_mapping:
                     continue
 
-                tableS = query
+
                 tableR = self.real_tables[i]
 
                 SM, ms = self.schema_mapping(tableS, tableR, partial_mapping, gid)
@@ -627,11 +652,11 @@ class WithProv_Optimized(WithProv):
                 upper_bound_col_score =  (upper_bound_col_score1 + float(min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1) \
                                / float(len(tableR.columns.values) + len(tableSnotintableR) - 1))
 
-                upper_bound_row_score = ms
+                upper_bound_row_score = ms / float(abs(tableR.shape[0] - tableS.shape[0]) + 1)
 
-                rank2.append(float(beta) * upper_bound_col_score + float(alpha) * upper_bound_row_score)
+                rank2.append(float(alpha) * upper_bound_col_score + float(beta) * upper_bound_row_score)
 
-                rank_candidate.append((tname, float(1)/float(table_prov_score[tname] + 1), SM))
+                rank_candidate.append((tname, float(table_prov_score[tname]), SM))
 
         rank2 = sorted(rank2, reverse=True)
         rank_candidate = sorted(rank_candidate, key=lambda d: d[1], reverse=True)
@@ -657,8 +682,15 @@ class WithProv_Optimized(WithProv):
                                                                                                  thres_key_cache,
                                                                                                  unmatched)
 
-            score = float(beta) * (col_sim) + float(alpha) * row_sim + float( 1 - beta - alpha) * rank_candidate[i][1]
+            score = float(alpha) * (col_sim) + float(beta) * row_sim / float(abs(tableR.shape[0] - tableS.shape[0]) + 1) + float( gamma) * rank_candidate[i][1]
 
+            logging.info(rank_candidate[i][0])
+            logging.info(col_sim * alpha)
+            logging.info(row_sim * beta / float(abs(tableR.shape[0] - tableS.shape[0]) + 1))
+            logging.info(rank_candidate[i][1] * gamma)
+            logging.info(score)
+
+            logging.info("\n")
             top_tables.append((rank_candidate[i][0], score, key_chosen))
 
 
@@ -672,7 +704,7 @@ class WithProv_Optimized(WithProv):
             if ks + id >= len(rank_candidate):
                 break
 
-            threshold = float(1 - beta - alpha) * rank_candidate[ks + id][1] + float(1 - beta) * rank2[ks+id]
+            threshold = float(gamma) * rank_candidate[ks + id][1] + rank2[ks+id]
 
             if threshold <= min_value * theta:
                 break
@@ -694,8 +726,15 @@ class WithProv_Optimized(WithProv):
                                                                                                                 thres_key_prune,
                                                                                                                 thres_key_cache,
                                                                                                                 unmatched)
-                new_score = float(beta) * (1 - row_sim) + float(alpha) * col_sim + float(1 - beta - alpha) * \
-                                                                               rank_candidate[i][1]
+                new_score = float(alpha) * (col_sim) + float(beta) * row_sim / float(abs(tableR.shape[0] - tableS.shape[0]) + 1)  + float(gamma) * \
+                                                                               rank_candidate[ks + id][1]
+                logging.info(rank_candidate[ks + id][0])
+                logging.info(col_sim * alpha)
+                logging.info(row_sim * beta / float(abs(tableR.shape[0] - tableS.shape[0]) + 1))
+                logging.info(rank_candidate[ks + id][1] * gamma)
+                logging.info(new_score)
+
+                logging.info("\n")
 
                 if new_score <= min_value:
                     continue

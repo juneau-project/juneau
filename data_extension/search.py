@@ -74,7 +74,7 @@ def search_tables(search_test, var_df, mode, code, var_name):
         logging.info("%s Joinable Tables are returned!"%len(tables))
     elif mode == 3:
         logging.info("Search for Alternative Feature Tables!")
-        tables = search_test.search_alternative_features(query_table, 10, code, var_name, 0.8, 0.1, 1, 0.9, 0.2)
+        tables = search_test.search_alternative_features(query_table, 10, code, var_name, 90, 200, 0.1, 10, 0.9, 0.2)
         logging.info("%s Tables are returned!"%len(tables))
         #
         # code = '\n'.join([t for t in code.split('\\n') if len(t)> 0 and t[0]!='%'])

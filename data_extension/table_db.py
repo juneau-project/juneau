@@ -10,7 +10,9 @@ import data_extension.config as cfg
 
 special_type = ['np', 'pd']
 from sqlalchemy.orm import sessionmaker
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 
 def create_tables_as_needed(engine, eng):
     """
@@ -218,8 +220,10 @@ def pre_vars(node, graph):
     node_list = {}
     q = queue.Queue()
     q.put(node)
+    dep = 0
     while(not q.empty()):
         temp_node = q.get()
+        dep = dep + 1
         if temp_node not in node_list:
             node_list[temp_node] = {}
         predecessors = graph.successors(temp_node)
@@ -232,4 +236,8 @@ def pre_vars(node, graph):
                     if n not in node_list:
                         node_list[n] = {}
                     node_list[n][s] = '-' + graph[s][n]['label']
+        if dep > 100:
+            break
+
+    logging.info("Finished")
     return node_list
