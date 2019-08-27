@@ -8,7 +8,7 @@ setup(
     scripts=['data_extension/print_var.py',
              'data_extension/jupyter.py',
              'data_extension/connect_psql.py',
-             'data_extension/search.py', 'data_extension/table_db.py'],
+             'data_extension/search.py', 'data_extension/table_db2.py'],
     install_requires=[
         'setuptools',
         'nb_config_manager'

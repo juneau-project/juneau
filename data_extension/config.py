@@ -1,6 +1,8 @@
 #sql_schema = 'public'
-sql_name = "postgres"
-sql_password = "habitat1"
+#sql_name = "postgres"
+#sql_password = "habitat1"
+sql_name = "yizhang"
+sql_password = "yizhang"
 sql_dbname = "joinstore"
 sql_host = "localhost"
 sql_graph = "graph_model"
@@ -8,6 +10,6 @@ sql_provenance = "nb_provenance"
 sql_dbs = "rowstore"
 
 neo_name = "neo4j"
-neo_password = "habitat1"
+neo_password = "yizhang"
 neo_host = "localhost:7474"
 neo_db = "data"

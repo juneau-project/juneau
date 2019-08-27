@@ -156,8 +156,6 @@ def fn(output, store_table_name, var_name, var_code, var_nb_name, psql_engine, s
     finally:
         conn.close()
 
-
-
 class JuneauHandler(IPythonHandler):
     kernel_id = None
     search_var = None
@@ -309,8 +307,12 @@ class JuneauHandler(IPythonHandler):
                 #fn(output, store_table_name, var_to_store, var_code, var_nb_name,
                 #   self.psql_engine, self.store_prov_db_class)
 
-                res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                                            self.psql_engine, self.store_prov_db_class)
+                fn(output, store_table_name, var_to_store, var_code, var_nb_name,
+                   self.psql_engine, self.store_prov_db_class)
+
+
+                #res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
+                #                            self.psql_engine, self.store_prov_db_class)
 
                 #res.result()
             else:
