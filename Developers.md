@@ -31,7 +31,17 @@ The `post` method in the handler is invoked during search; `put` is called when 
 
 ### Put: Index
 
-To index a table, we invoke the **kernel** with the name of the variable, and hope to get back a JSON version of the variable.  This is done through the `exec_ipython` call.
+To index a table, we invoke the **kernel** with the name of the variable, and hope to get back a JSON version of the variable.  We then store it in the Juneau PostgreSQL schema, using Pandas.
+
+```
+HTTP request --> put(table_var_name) --jupyter.request_var--> kernel
+
+SQLAlchemy<--Pandas<--fn<--JSON--kernel
+Store_Provenance
+Store_Lineage
+````
+
+First we need to fetch the variable (`find_variable`), which is done through the `jupyter.request_var` method.  This sends a blocking request to the kernel, which retrieves the variable as a JSON object.
 
 The table is stored in the server extension, after it is given a unique name based on the variable, cell, notebook, etc.  We us an async method (`fn`) to do the actual storage.
 
@@ -43,7 +53,9 @@ The search operation first finds the contents of the "search table", then calls 
 
 Several Python files are used to communicate with the kernel.  These include:
 
-* `print_var.py`, which uses a blocking connection to the kernel to request a JSON version of all variables.
+* `jupyter.py`, which includes methods for requesting data from the Jupyter kernel.
+* `connect_psql.py`, which is invoked at the kernel side to connect to the Juneau SQL instance.
+* `print_var.py`, which uses a blocking connection to the kernel to request a JSON version of all variables.  (This is superseded by `jupyter.py`).
 * `var_list.py`, which finds all Python variables that we are interested in indexing.
 
 ## User Interface
