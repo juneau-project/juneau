@@ -13,7 +13,9 @@ https://dbappserv.cis.upenn.edu/home/?q=node/259
 
 ### Prerequisites: relational and graph databases
 
-First, be sure you have installed (1) PostgreSQL and (2) Neo4J.
+First, be sure you have installed (1) PostgreSQL and (2) Neo4J.  You can easily do this by downloading [this file](https://bitbucket.org/penndb/pennprov/raw/f6fa02fdebdd1bf99a6abc25f56b9dcaf4d28e26/docker-container/docker-compose.yml) for Docker-Compose, and then running `docker-compose up` from the directory.
+
+This skips the steps you would otherwise have to perform: 
 
 * Run `sudo -u postgres psql` and then enter `\password`.  Set a password for the account (by default this is assumed to be `habitat1`).
 * Open your browser to `localhost:7474` and change the password on the `neo4j` password, by default to `habitat1`.
