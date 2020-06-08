@@ -3,7 +3,7 @@ import sys
 import site
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 import sys
 

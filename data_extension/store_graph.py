@@ -4,7 +4,7 @@ import base64
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 class Store_Provenance:
 
@@ -87,9 +87,14 @@ class Store_Provenance:
         bcode = str(base64.b64encode(bytes(code,'utf-8')))
         matcher = NodeMatcher(self.graph_db)
 
+        #logging.info(bcode)
+        nbcode = bcode[2:-1]
+        #logging.info(list(self.code_dict.items())[:10])
 
         if bcode in self.code_dict:
             current_cell = matcher.match("Cell", source_code = bcode).first()
+        elif nbcode in self.code_dict:
+            current_cell = matcher.match("Cell", source_code=bcode).first()
         else:
             if len(list(self.code_dict.values())) != 0:
                 max_id = max(list(self.code_dict.values()))

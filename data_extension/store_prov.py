@@ -10,7 +10,7 @@ import sys
 special_type = ['np', 'pd']
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 class Store_Lineage:
 
@@ -98,11 +98,19 @@ class Store_Lineage:
         lid = 1
         fflg = False
         for cid, cell in enumerate(code_list):
-            logging.info(cid)
-            logging.info(cell)
-            codes = cell.split("\\n")
+            #logging.info(cid)
+            #logging.info(cell)
+
+            if "\\n" in cell:
+                codes = cell.split("\\n")
+                #logging.info(codes)
+            elif "\n" in cell:
+                codes = cell.split("\n")
+                #logging.info(codes)
+
             new_codes = []
             for code in codes:
+
                 if code[:3].lower() == 'def':
                     fflg = True
                     continue
@@ -142,14 +150,13 @@ class Store_Lineage:
                         line2cid[lid] = cid
                         lid = lid + 1
                 except:
-                    logging.info(code)
+                    logging.info("error with "  + code)
 
 
 
             all_code = all_code + '\n'.join(new_codes) + '\n'
 
         all_code = all_code.strip("\n")
-
         all_code = all_code.split("\n")
         all_code = [t for t in all_code if t != ""]
         all_code = "\n".join(all_code)
@@ -225,8 +232,8 @@ class Store_Lineage:
             dep_db = pd.read_sql_table("dependen", conn, schema = cfg.sql_graph)
             l2c_db = pd.read_sql_table("line2cid", conn, schema = cfg.sql_graph)
             lid_db = pd.read_sql_table("lastliid", conn, schema = cfg.sql_graph)
-
             var_list = dep_db['view_id'].tolist()
+
         except:
             logging.error("reading prov from db failed")
         finally:
@@ -240,10 +247,11 @@ class Store_Lineage:
 
         try:
             #self.generate_graph(code_list, nb_name)
+            #logging.info("Detected Dependency: ", dep)
+            #logging.info("Detected var_list: ", var_list)
             dep_str = json.dumps(dep)
             l2c_str = json.dumps(c2i)
             lid_str = json.dumps(lid)
-
 
             logging.info('JSON created')
 

@@ -2,7 +2,7 @@ import numpy as np
 from difflib import SequenceMatcher
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 tuning_parameter = 0.9
 sample_size = 1000

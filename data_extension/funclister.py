@@ -1,7 +1,7 @@
 import ast
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 class FuncLister(ast.NodeVisitor):
     def __init__(self):
@@ -201,8 +201,8 @@ class FuncLister(ast.NodeVisitor):
                 right_array = right_array + ret
 
         self.dependency[node.lineno] = (left_array, right_array)
-        logging.info(node.lineno);
-        logging.info(left_array);
-        logging.info(right_array);
+        #logging.info(node.lineno);
+        #logging.info(left_array);
+        #logging.info(right_array);
 
 

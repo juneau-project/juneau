@@ -10,7 +10,7 @@ from data_extension.cost_func import compute_table_size
 import data_extension.config as cfg
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 
 class Store_Seperately:

@@ -6,7 +6,7 @@ import os
 import pandas as pd
 import pickle
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 import sys
 
@@ -39,7 +39,6 @@ class SearchTables:
                         table_r.drop(['Unnamed: 0'], axis=1, inplace=True)
                     self.real_tables[i] = table_r
                     count = count + 1
-
                     if count % 20 == 0:
                         logging.info("Indexed " + str(count) + " tables...")
                 except KeyboardInterrupt:

@@ -22,7 +22,7 @@ import ast
 import data_extension.config as cfg
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -87,25 +87,18 @@ class WithProv_Optimized(WithProv):
             #print(Graph)
             try:
                 line_id = lastliid_store[nid]
-                #logging.info(line_id)
-                #logging.info(line2cid_store[nid])
+
                 nid_name = nid.split("_")[-1]
                 Graph = self.__generate_graph(nid_name, dependency_store[nid], line2cid_store[nid])
                 var_name = "_".join(nid.split("_")[1:-1])
 
                 query_name = 'var_' + var_name + '_' + str(line2cid_store[nid][str(line_id)]) + "_" + str(nid_name)
 
-                #logging.info(query_name)
-                #logging.info(list(Graph.nodes))
-
 
                 query_node = pre_vars(query_name, Graph)
                 Graphs[nid] = query_node
-                logging.info(nid)
             except:
-                logging.error("Can not generate the graph!!! " + str(sys.exc_info()[0]))
-
-        logging.info("HEHSHSHSHSH")
+                logging.error("Can not generate the graph  " + str(sys.exc_info()[0]) + " !")
 
         return Graphs, line2cid_store
 
@@ -259,61 +252,61 @@ class WithProv_Optimized(WithProv):
                     ret = id + 1
         return ret
 
-    def init_schema_mapping(self):
-
-        matcher = NodeMatcher(self.geng)
-
-        tables_touched = []
-        tables_connected = []
-        for i in self.real_tables.keys():
-            if i[6:] not in set(tables_touched):
-                current_node = matcher.match("Var", name = i[6:]).first()
-                connected_tables = super().dfs(current_node)
-                tables_touched = tables_touched + connected_tables
-                tables_connected.append(connected_tables)
-
-        self.schema_linking = {}
-        self.schema_element = {}
-        self.schema_element_count = {}
-        self.schema_element_dtype = {}
-
-        self.table_group = {}
-
-        # assign each table a group id
-        for idi, i in enumerate(tables_connected):
-            for j in i:
-                self.table_group[j] = idi
-
-        for idi, i in enumerate(tables_connected):
-            self.schema_linking[idi] = {}
-            self.schema_element[idi] = {}
-            self.schema_element_dtype[idi] = {}
-            self.schema_element_count[idi] = {}
-
-            for j in i:
-                tname = 'rtable' + j
-
-                if tname not in self.real_tables:
-                    continue
-                for col in self.real_tables[tname].columns:
-                    if col not in self.schema_linking[idi]:
-                        if len(self.schema_linking[idi].keys()) == 0:
-                            sid = 0
-                        else:
-                            sid = max(list(self.schema_linking[idi].values())) + 1
-
-                        self.schema_linking[idi][col] = sid
-                        self.schema_element_dtype[idi][col] = self.real_tables[tname][col].dtype
-                        self.schema_element_count[idi][col] = 1
-                        self.schema_element[idi][col] = []
-                        self.schema_element[idi][col] += self.real_tables[tname][col][self.real_tables[tname][col].notnull()].tolist()
-                        self.schema_element[idi][col] = list(set(self.schema_element[idi][col]))
-                    else:
-                        self.schema_element[idi][col] += self.real_tables[tname][col][self.real_tables[tname][col].notnull()].tolist()
-                        self.schema_element[idi][col] = list(set(self.schema_element[idi][col]))
-                        self.schema_element_count[idi][col] += 1
-
-        logging.info('There are %s groups of tables.'%len(tables_connected))
+    # def init_schema_mapping(self):
+    #
+    #     matcher = NodeMatcher(self.geng)
+    #
+    #     tables_touched = []
+    #     tables_connected = []
+    #     for i in self.real_tables.keys():
+    #         if i[6:] not in set(tables_touched):
+    #             current_node = matcher.match("Var", name = i[6:]).first()
+    #             connected_tables = super().dfs(current_node)
+    #             tables_touched = tables_touched + connected_tables
+    #             tables_connected.append(connected_tables)
+    #
+    #     self.schema_linking = {}
+    #     self.schema_element = {}
+    #     self.schema_element_count = {}
+    #     self.schema_element_dtype = {}
+    #
+    #     self.table_group = {}
+    #
+    #     # assign each table a group id
+    #     for idi, i in enumerate(tables_connected):
+    #         for j in i:
+    #             self.table_group[j] = idi
+    #
+    #     for idi, i in enumerate(tables_connected):
+    #         self.schema_linking[idi] = {}
+    #         self.schema_element[idi] = {}
+    #         self.schema_element_dtype[idi] = {}
+    #         self.schema_element_count[idi] = {}
+    #
+    #         for j in i:
+    #             tname = 'rtable' + j
+    #
+    #             if tname not in self.real_tables:
+    #                 continue
+    #             for col in self.real_tables[tname].columns:
+    #                 if col not in self.schema_linking[idi]:
+    #                     if len(self.schema_linking[idi].keys()) == 0:
+    #                         sid = 0
+    #                     else:
+    #                         sid = max(list(self.schema_linking[idi].values())) + 1
+    #
+    #                     self.schema_linking[idi][col] = sid
+    #                     self.schema_element_dtype[idi][col] = self.real_tables[tname][col].dtype
+    #                     self.schema_element_count[idi][col] = 1
+    #                     self.schema_element[idi][col] = []
+    #                     self.schema_element[idi][col] += self.real_tables[tname][col][self.real_tables[tname][col].notnull()].tolist()
+    #                     self.schema_element[idi][col] = list(set(self.schema_element[idi][col]))
+    #                 else:
+    #                     self.schema_element[idi][col] += self.real_tables[tname][col][self.real_tables[tname][col].notnull()].tolist()
+    #                     self.schema_element[idi][col] = list(set(self.schema_element[idi][col]))
+    #                     self.schema_element_count[idi][col] += 1
+    #
+    #     logging.info('There are %s groups of tables.'%len(tables_connected))
 
     def sample_rows_for_each_column(self, row_size = 1000):
         self.schema_element_sample_row = {}

@@ -20,6 +20,8 @@ class WithProv(SearchTables):
 
     def init_schema_mapping(self):
 
+        logging.info("Start Reading From Neo4j!")
+
         matcher = NodeMatcher(self.geng)
 
         tables_touched = []

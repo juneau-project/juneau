@@ -32,7 +32,7 @@ from io import StringIO
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 HERE = os.path.dirname(__file__)
 
@@ -41,6 +41,7 @@ import data_extension.config as cfg
 stdflag = False
 pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)#Pool(processes=2)
 indexed = {}
+nb_cell_id_node = {}
 
 types_to_exclude = [ \
     'module', \
@@ -120,24 +121,23 @@ def write_df(engine, df_to_be_written, table_name, my_schema):
 
 # Asynchronous storage of tables
 def fn(output, store_table_name, var_name, var_code, var_nb_name, psql_engine, store_prov_db_class):
+
     logging.info("Indexing new table " + store_table_name)
     conn = psql_engine.connect()
+
     try:
         output.to_sql(name='rtable' + store_table_name, con=conn, \
                           schema=cfg.sql_dbs, if_exists='replace', index=False)
         #write_df(psql_engine, output, 'rtable' + store_table_name, cfg.sql_dbs)
-
         logging.info('Base table stored')
 
         try:
             code_list = var_code.split("\\n#\\n")
-
-            logging.info(var_nb_name)
-
-            logging.info(code_list)
-
+            #logging.info(code_list)
             store_prov_db_class.InsertTable_Model(store_table_name, var_name, code_list, var_nb_name)
             indexed[store_table_name] = True
+            #logging.info(indexed)
+
         except:
             logging.error(
                 'Unable to store provenance of ' + store_table_name + ' due to error' + str(sys.exc_info()[0]))
@@ -191,25 +191,21 @@ class JuneauHandler(IPythonHandler):
         logging.info('Looking up variable ' + search_var)
 
 
-        #return json.dumps(vardic)
-
         output, error = data_extension.jupyter.request_var(kernel_id, search_var)
         #output, error = data_extension.jupyter.exec_ipython(kernel_id, search_var, 'print_var')
-        logging.info('Returned with variable')
+        logging.info('Returned with variable value.')
 
         if error != "" or output == "" or output is None:
             sta = False
             return sta, error
         else:
             try:
-                #logging.info('Parsing: ' + output)
                 var_obj = pd.read_json(output, orient='split')
                 sta = True
             except:
                 logging.info('Parsing: ' + output)
                 sta = False
                 var_obj = None
-
 
         return sta, var_obj
 
@@ -233,9 +229,12 @@ class JuneauHandler(IPythonHandler):
                        'schema': cfg.sql_dbs}
 
     def put(self):
+
         global pool
         global indexed
         global fn
+        global nb_cell_id_node
+
         self.data_to_store = self.request.arguments
 
         if len(self.data_to_store) == 0:
@@ -262,23 +261,24 @@ class JuneauHandler(IPythonHandler):
 
         store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
 
-        logging.info("stored table ")
-        logging.info(indexed)
+        logging.info("stored table: " + str(indexed))
 
-        if (store_table_name in indexed) or (var_to_store not in code_list[-1]):
-            logging.info('Request to index is already registered')
+        if (store_table_name in indexed):
+            logging.info('Request to index is already registered.')
+        elif var_to_store not in code_list[-1]:
+            logging.info('Not a variable in the current cell.')
+
         else:
             logging.info("Start to store "+ var_to_store)
-            logging.info(var_to_store)
-            logging.info(code_list[-1])
-
             success, output = self.find_variable(var_to_store, kernel_id)
+
             if success:
                 logging.info("Get Value of " + var_to_store)
                 logging.info(output.head())
 
                 if not self.graph_db:
                     self.graph_db = connect2gdb()
+
                 if not self.psql_engine:
                     self.psql_engine = connect2db_engine(cfg.sql_dbname)
 
@@ -292,17 +292,28 @@ class JuneauHandler(IPythonHandler):
                     self.store_prov_db_class = Store_Lineage(psql_db)
                     #psql_db.close()
 
-                if self.prev_nb != var_nb_name:
+                self.prev_node = None
+                if var_nb_name not in nb_cell_id_node:
                     self.prev_node = None
+                    nb_cell_id_node[var_nb_name] = {}
 
                 try:
+                    for cid in range(var_cell_id - 1, -1, -1):
+                        if cid in nb_cell_id_node[var_nb_name]:
+                            self.prev_node = nb_cell_id_node[var_nb_name][cid]
+                            break
                     self.prev_node = self.store_graph_db_class.add_cell(var_code, \
                                                                         self.prev_node, \
                                                                         var_to_store, \
                                                                         var_cell_id, var_nb_name)
+                    if var_cell_id not in nb_cell_id_node[var_nb_name]:
+                        nb_cell_id_node[var_nb_name][var_cell_id] = self.prev_node
+
+
                 except:
                     logging.error('Unable to store in graph store due to error ' + str(sys.exc_info()[0]))
-                self.prev_nb = var_nb_name
+
+
 
                 #fn(output, store_table_name, var_to_store, var_code, var_nb_name,
                 #   self.psql_engine, self.store_prov_db_class)

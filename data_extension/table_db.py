@@ -12,7 +12,7 @@ special_type = ['np', 'pd']
 from sqlalchemy.orm import sessionmaker
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 def create_tables_as_needed(engine, eng):
     """
@@ -238,6 +238,4 @@ def pre_vars(node, graph):
                     node_list[n][s] = '-' + graph[s][n]['label']
         if dep > 100:
             break
-
-    logging.info("Finished")
     return node_list
