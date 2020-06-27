@@ -81,24 +81,29 @@ class WithProv_Optimized(WithProv):
         for index, row in lastliid.iterrows():
             lastliid_store[row['view_id']] = json.loads(row['view_cmd'])
 
-
-        for nid in dependency_store.keys():
+        for id, nid in enumerate(dependency_store.keys()):
             #Graph = self.__generate_graph(nid, dependency_store[nid], line2cid_store[nid])
             #print(Graph)
             try:
                 line_id = lastliid_store[nid]
 
+                if line_id == 0:
+                    continue
+
                 nid_name = nid.split("_")[-1]
                 Graph = self.__generate_graph(nid_name, dependency_store[nid], line2cid_store[nid])
-                var_name = "_".join(nid.split("_")[1:-1])
 
+                if len(list(Graph.nodes)) == 0:
+                    continue
+
+                var_name = "_".join(nid.split("_")[1:-1])
                 query_name = 'var_' + var_name + '_' + str(line2cid_store[nid][str(line_id)]) + "_" + str(nid_name)
 
-
-                query_node = pre_vars(query_name, Graph)
-                Graphs[nid] = query_node
+                if Graph.has_node(query_name):
+                    query_node = pre_vars(query_name, Graph)
+                    Graphs[nid] = query_node
             except:
-                logging.error("Can not generate the graph  " + str(sys.exc_info()[0]) + " !")
+                logging.error("Can not generate the graph  " + str(id) + " " + str(sys.exc_info()[0]) + " !")
 
         return Graphs, line2cid_store
 
