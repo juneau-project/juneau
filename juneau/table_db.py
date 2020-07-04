@@ -4,16 +4,17 @@ import queue
 import networkx as nx
 import sys
 
-from data_extension.funclister import FuncLister
+from juneau.funclister import FuncLister
 import ast
 
-import data_extension.config as cfg
+import juneau.config as cfg
 
 special_type = ['np', 'pd']
 from sqlalchemy.orm import sessionmaker
 import logging
 
-#logging.basicConfig(level=logging.DEBUG)
+
+# logging.basicConfig(level=logging.DEBUG)
 
 def create_tables_as_needed(engine, eng):
     """
@@ -53,8 +54,8 @@ def connect2db(dbname):
     :return:
     """
     try:
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
-                               "/" + dbname)#cfg.sql_dbname)
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+                               "/" + dbname)  # cfg.sql_dbname)
 
         eng = engine.connect()
         create_tables_as_needed(engine, eng)
@@ -65,14 +66,15 @@ def connect2db(dbname):
                                "/")
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
-        eng.execute("create database " + dbname + ';')#'#cfg.sql_dbname + ';')
+        eng.execute("create database " + dbname + ';')  # '#cfg.sql_dbname + ';')
 
         create_tables_as_needed(engine, eng)
         eng.connection.connection.set_isolation_level(1)
 
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
-                               "/" + dbname)#cfg.sql_dbname)
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+                               "/" + dbname)  # cfg.sql_dbname)
         return engine.connect()
+
 
 def connect2db_engine(dbname):
     """
@@ -82,8 +84,8 @@ def connect2db_engine(dbname):
     :return:
     """
     try:
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
-                               "/" + dbname, isolation_level="AUTOCOMMIT")#cfg.sql_dbname)
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+                               "/" + dbname, isolation_level="AUTOCOMMIT")  # cfg.sql_dbname)
 
         eng = engine.connect()
         create_tables_as_needed(engine, eng)
@@ -95,15 +97,16 @@ def connect2db_engine(dbname):
                                "/")
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
-        eng.execute("create database " + dbname + ';')#'#cfg.sql_dbname + ';')
+        eng.execute("create database " + dbname + ';')  # '#cfg.sql_dbname + ';')
 
         create_tables_as_needed(engine, eng)
         eng.connection.connection.set_isolation_level(1)
         eng.close()
 
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host +\
-                               "/" + dbname, isolation_level="AUTOCOMMIT")#cfg.sql_dbname)
+        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+                               "/" + dbname, isolation_level="AUTOCOMMIT")  # cfg.sql_dbname)
         return engine
+
 
 def connect2gdb():
     """
@@ -112,6 +115,7 @@ def connect2gdb():
     """
     graph = Graph("http://" + cfg.neo_name + ":" + cfg.neo_password + "@" + cfg.neo_host + "/db/" + cfg.neo_db)
     return graph
+
 
 def fetch_all_table_names(schema, eng):
     """
@@ -123,9 +127,10 @@ def fetch_all_table_names(schema, eng):
     """
     tables = eng.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = \'" + schema + "\';")
     base_table_name = []
-    for tb in tables :
+    for tb in tables:
         base_table_name.append(tb[0])
     return base_table_name
+
 
 def fetch_all_views(eng):
     tables = eng.execute("select table_name from INFORMATION_SCHEMA.views;")
@@ -136,20 +141,6 @@ def fetch_all_views(eng):
             views.append(t_name)
     return views
 
-#test2 = Store_Provenance()
-#test2.create_prov_graph(test.dependency, 0)
-
-
-
-#print(G.nodes)
-#print(list(G.successors('var_data_19_0')))
-#print(str(G))
-
-
-            #candidate_list = matcher.match('Var_temp', var=dep).order_by("_.line_num")
-            #candidate = None
-            #for cand_node in candidate_list.__iter__():
-            #    candidate = cand_node
 
 def last_line_var(varname, code):
     code = code.split('\n')
@@ -162,16 +153,17 @@ def last_line_var(varname, code):
             ret = id + 1
     return ret
 
-def parse_code(all_code):
 
+def parse_code(all_code):
     test = FuncLister()
-    #print(all_code)
+    # print(all_code)
     tree = ast.parse(all_code)
-    #print(tree)
+    # print(tree)
     test.visit(tree)
-    #print(test.dependency)
+    # print(test.dependency)
 
     return test.dependency
+
 
 def generate_graph(dependency):
     G = nx.DiGraph()
@@ -190,7 +182,7 @@ def generate_graph(dependency):
                 ele = ele[0]
 
             new_node = 'var_' + ele + '_' + str(i)
-            G.add_node(new_node, line_id = i, var = ele)
+            G.add_node(new_node, line_id=i, var=ele)
 
             for dep, ename in right:
                 candidate_list = G.nodes
@@ -200,29 +192,30 @@ def generate_graph(dependency):
                         if cand in left_node:
                             continue
                         rankbyline.append((cand, G.nodes[cand]['line_id']))
-                rankbyline = sorted(rankbyline, key = lambda d:d[1], reverse= True)
+                rankbyline = sorted(rankbyline, key=lambda d: d[1], reverse=True)
 
                 if len(rankbyline) == 0:
                     if dep not in special_type:
                         candidate_node = 'var_' + dep + '_' + str(1)
-                        G.add_node(candidate_node, line_id = 1, var = dep)
+                        G.add_node(candidate_node, line_id=1, var=dep)
                     else:
                         candidate_node = dep
-                        G.add_node(candidate_node, line_id = 1, var = dep)
+                        G.add_node(candidate_node, line_id=1, var=dep)
 
                 else:
                     candidate_node = rankbyline[0][0]
 
-                G.add_edge(new_node, candidate_node, label = ename)
+                G.add_edge(new_node, candidate_node, label=ename)
 
     return G
+
 
 def pre_vars(node, graph):
     node_list = {}
     q = queue.Queue()
     q.put(node)
     dep = 0
-    while(not q.empty()):
+    while (not q.empty()):
         temp_node = q.get()
         dep = dep + 1
         if temp_node not in node_list:

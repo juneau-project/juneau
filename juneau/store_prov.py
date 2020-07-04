@@ -1,8 +1,8 @@
-from data_extension.funclister import FuncLister
+from juneau.funclister import FuncLister
 import ast
 import networkx as nx
 import json
-import data_extension.config as cfg
+import juneau.config as cfg
 import psycopg2
 import pandas as pd
 

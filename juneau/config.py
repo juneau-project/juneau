@@ -1,0 +1,12 @@
+sql_name = "nacho"
+sql_password = "test_password"
+sql_dbname = "juneau"
+sql_host = "localhost"
+sql_graph = "graph_model"
+sql_provenance = "nb_provenance"
+sql_dbs = "rowstore"
+
+neo_name = "neo4j"
+neo_password = "test_password"
+neo_host = "localhost:7474"
+neo_db = "data"

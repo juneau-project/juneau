@@ -1,8 +1,8 @@
-from data_extension.table_db import generate_graph
-from data_extension.table_db import parse_code
-from data_extension.table_db import pre_vars
-from data_extension.table_db import last_line_var
-import data_extension.config as cfg
+from juneau.table_db import generate_graph
+from juneau.table_db import parse_code
+from juneau.table_db import pre_vars
+from juneau.table_db import last_line_var
+import juneau.config as cfg
 
 import json
 from sys import getsizeof

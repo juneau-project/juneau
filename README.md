@@ -32,6 +32,6 @@ Next, download sample_data.zip and unzip it.
 ### Install Jupyter Notebook extensions
 
 * `sudo -H python setup.py install`
-* `sudo -H jupyter serverextension enable --py data_extension`
+* `sudo -H jupyter serverextension enable --py juneau`
 * `jupyter nbextension install dataset_inspector/ --user`
 * `jupyter nbextension enable dataset_inspector/main --user`

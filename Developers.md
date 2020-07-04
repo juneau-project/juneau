@@ -15,9 +15,9 @@ The Juneau extension has a `config.py` which allows us to specify (1) the databa
 
 When Juneau is installed as a server extension:
 
-`sudo -H jupyter serverextension enable --py data_extension`
+`sudo -H jupyter serverextension enable --py juneau`
 
-this triggers `data_extension/handler.py` and the `load_jupyter_server_extension`() function -- which in turn calls `background_load` to load and index all tables in the data lake.
+this triggers `juneau/handler.py` and the `load_jupyter_server_extension`() function -- which in turn calls `background_load` to load and index all tables in the data lake.
 
 The extension also logs the `/juneau` path for REST services.
 

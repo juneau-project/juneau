@@ -1,4 +1,4 @@
-from data_extension.table_db import connect2db_engine, connect2gdb
+from juneau.table_db import connect2db_engine, connect2gdb
 
 import copy
 import numpy as np
@@ -10,7 +10,7 @@ import logging
 
 import sys
 
-from data_extension.table_db import fetch_all_table_names, fetch_all_views
+from juneau.table_db import fetch_all_table_names, fetch_all_views
 
 class SearchTables:
     query = None
@@ -145,6 +145,8 @@ class SearchTables:
     def dfs(self, snode):
 
         cell_rel = self.geng.match_one((snode,), r_type = "Containedby")
+        if not cell_rel:
+            return []
         cell_node = cell_rel.end_node
         names = []
         return_names = []

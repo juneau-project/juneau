@@ -7,19 +7,19 @@ import timeit
 import networkx as nx
 import sys
 
-from data_extension.schemamapping import SchemaMapping
-from data_extension.search import special_type
-from data_extension.search_tables import SearchTables
-from data_extension.search_withprov import WithProv
-from data_extension.search_prov_code import SearchProv
-from data_extension.table_db import generate_graph
-from data_extension.table_db import parse_code
-from data_extension.table_db import pre_vars
-from data_extension.table_db import last_line_var
-from data_extension.funclister import FuncLister
+from juneau.schemamapping import SchemaMapping
+from juneau.search import special_type
+from juneau.search_tables import SearchTables
+from juneau.search_withprov import WithProv
+from juneau.search_prov_code import SearchProv
+from juneau.table_db import generate_graph
+from juneau.table_db import parse_code
+from juneau.table_db import pre_vars
+from juneau.table_db import last_line_var
+from juneau.funclister import FuncLister
 import ast
 
-import data_extension.config as cfg
+import juneau.config as cfg
 
 import logging
 #logging.basicConfig(level=logging.DEBUG)

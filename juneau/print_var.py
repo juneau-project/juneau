@@ -1,15 +1,16 @@
-import sys
 import logging
+import sys
+
 logging.basicConfig(level=logging.INFO)
 
 
 #from jupyter_client import kernelspec
 
 from jupyter_client import find_connection_file
-from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
+from jupyter_client import BlockingKernelClient
 
 TIMEOUT=60
-from traitlets import CUnicode
+
 
 def main(kid, var):
 

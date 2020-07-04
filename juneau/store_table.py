@@ -5,9 +5,9 @@ import numpy as np
 
 from sqlalchemy import create_engine
 
-from data_extension.cost_func import compute_table_size
+from juneau.cost_func import compute_table_size
 
-import data_extension.config as cfg
+import juneau.config as cfg
 
 import logging
 #logging.basicConfig(level=logging.DEBUG)
