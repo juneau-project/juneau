@@ -1,90 +1,18 @@
-from py2neo import NodeMatcher
-import os
-import pandas as pd
-import numpy as np
-import pickle
-import copy
+import logging
 import timeit
 
-from juneau.table_db import connect2gdb, connect2db
-from juneau.table_db import fetch_all_table_names, fetch_all_views
-from juneau.schemamapping import SchemaMapping
-from juneau.schemamapping_sk import SchemaMapping_SK
-from juneau.search_prov_code import SearchProv
-from juneau.search_tables import SearchTables
-import juneau.config as cfg
-
-import logging
+import numpy as np
+import pandas as pd
+from juneau.db.schemamapping import SchemaMapping
+from juneau.db.schemamapping_sk import SchemaMapping_SK
+from juneau.search.search_prov_code import SearchProv
+from juneau.search.search_tables import SearchTables
+from py2neo import NodeMatcher
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class WithProv_Sk(SearchTables):
-
-    # def __row_similarity(self, colA, colB):
-    #
-    #     colA_value = colA[~pd.isnull(colA)].values
-    #     colB_value = colB[~pd.isnull(colB)].values
-    #
-    #     row_sim_upper = len(np.intersect1d(colA_value, colB_value))
-    #     row_sim_lower = len(np.union1d(colA_value, colB_value))
-    #     row_sim = float(row_sim_upper) / float(row_sim_lower)
-    #     return row_sim
-    #
-    # def __col_similarity(self, tableA, tableB, SM, key_factor):
-    #
-    #     col_sim_upper = 1 + float(len(SM.keys()) - 1) * float(key_factor)
-    #     tableA_not_in_tableB = []
-    #     for kyA in tableA.columns.tolist():
-    #         if kyA not in SM:
-    #             tableA_not_in_tableB.append(kyA)
-    #     col_sim_lower = len(tableB.columns.values) + len(tableA_not_in_tableB)
-    #     col_sim = float(col_sim_upper) / float(col_sim_lower)
-    #     return col_sim
-    #
-    # def remove_dup(self, ranked_list, ks):
-    #     res = []
-    #     for i, j in ranked_list:
-    #         flg = True
-    #         for k in res:
-    #             if self.real_tables[i].equals(self.real_tables[k]):
-    #                 flg = False
-    #                 break
-    #         if flg == True:
-    #             res.append(i)
-    #
-    #         if len(res) == ks:
-    #             break
-    #     return res
-    #
-    # def dfs(self, snode):
-    #
-    #     cell_rel = self.geng.match_one((snode,), r_type="Containedby")
-    #     cell_node = cell_rel.end_node
-    #     names = []
-    #     return_names = []
-    #     stack = [cell_node]
-    #     while (True):
-    #         if len(stack) != 0:
-    #             node = stack.pop()
-    #             names.append(node['name'])
-    #             for rel in self.geng.match((node,), r_type="Contains"):
-    #                 return_names.append(rel.end_node['name'])
-    #
-    #             for rel in self.geng.match((node,), r_type="Successor"):
-    #                 if rel.end_node['name'] in names:
-    #                     continue
-    #                 else:
-    #                     stack.append(rel.end_node)
-    #             for rel in self.geng.match((node,), r_type="Parent"):
-    #                 if rel.end_node['name'] in names:
-    #                     continue
-    #                 else:
-    #                     stack.append(rel.end_node)
-    #         else:
-    #             break
-    #
-    #     return list(set(return_names))
 
     def init_schema_mapping(self):
 
@@ -149,30 +77,6 @@ class WithProv_Sk(SearchTables):
                 self.schema_element_sample[i][sc] = self.schema_element[i][sc]
 
     def __init__(self, dbname, schema=None):
-        # self.query = None
-        # self.eng = connect2db(dbname)
-        # self.geng = connect2gdb()
-        #
-        # self.real_tables = {}
-        #
-        # if schema != None:
-        #     self.tables = fetch_all_table_names(schema, self.eng)
-        #     for i in self.tables:
-        #         try:
-        #             tableR = pd.read_sql_table(i, self.eng, schema=schema)
-        #             self.real_tables[i] = tableR
-        #         except:
-        #             continue
-        # else:
-        #     self.tables = fetch_all_views(self.eng)
-        #     for i in self.tables:
-        #         try:
-        #             tableR = pd.read_sql_table(i, self.eng)
-        #             self.real_tables[i] = tableR
-        #         except:
-        #             continue
-        #
-        # print("We got ", len(self.real_tables.keys()), " tables in total.")
 
         super().__init__(dbname, schema)
 

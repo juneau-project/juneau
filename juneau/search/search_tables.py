@@ -1,16 +1,14 @@
-from juneau.table_db import connect2db_engine, connect2gdb
-
 import copy
-import numpy as np
-import os
-import pandas as pd
-import pickle
 import logging
-#logging.basicConfig(level=logging.DEBUG)
-
+import os
+import pickle
 import sys
 
-from juneau.table_db import fetch_all_table_names, fetch_all_views
+import numpy as np
+import pandas as pd
+
+from juneau.db.table_db import connect2db_engine, connect2gdb, fetch_all_table_names, fetch_all_views
+
 
 class SearchTables:
     query = None

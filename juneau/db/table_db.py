@@ -1,20 +1,15 @@
-from sqlalchemy import create_engine
-from py2neo import Graph, Node, Relationship, cypher, NodeMatcher
-import queue
-import networkx as nx
-import sys
-
-from juneau.funclister import FuncLister
 import ast
+import queue
 
-import juneau.config as cfg
+import networkx as nx
+from py2neo import Graph
+from sqlalchemy import create_engine
 
-special_type = ['np', 'pd']
+from juneau import config
+from juneau.utils.funclister import FuncLister
+
 from sqlalchemy.orm import sessionmaker
-import logging
 
-
-# logging.basicConfig(level=logging.DEBUG)
 
 def create_tables_as_needed(engine, eng):
     """
@@ -26,9 +21,9 @@ def create_tables_as_needed(engine, eng):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    eng.execute("create schema if not exists " + cfg.sql_dbs + ';')
-    eng.execute("create schema if not exists " + cfg.sql_graph + ';')
-    eng.execute("create schema if not exists " + cfg.sql_provenance + ';')
+    eng.execute("create schema if not exists " + config.sql_dbs + ';')
+    eng.execute("create schema if not exists " + config.sql_graph + ';')
+    eng.execute("create schema if not exists " + config.sql_provenance + ';')
 
     eng.execute("CREATE TABLE IF NOT EXISTS graph_model.dependen (" + \
                 "view_id character varying(1000)," + \
@@ -54,25 +49,25 @@ def connect2db(dbname):
     :return:
     """
     try:
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
-                               "/" + dbname)  # cfg.sql_dbname)
+        engine = create_engine("postgresql://" + config.sql_name + ":" + config.sql_password + "@" + config.sql_host + \
+                               "/" + dbname)  # config.sql_dbname)
 
         eng = engine.connect()
         create_tables_as_needed(engine, eng)
 
         return eng
     except:
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+        engine = create_engine("postgresql://" + config.sql_name + ":" + config.sql_password + "@" + config.sql_host + \
                                "/")
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
-        eng.execute("create database " + dbname + ';')  # '#cfg.sql_dbname + ';')
+        eng.execute("create database " + dbname + ';')  # '#config.sql_dbname + ';')
 
         create_tables_as_needed(engine, eng)
         eng.connection.connection.set_isolation_level(1)
 
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
-                               "/" + dbname)  # cfg.sql_dbname)
+        engine = create_engine("postgresql://" + config.sql_name + ":" + config.sql_password + "@" + config.sql_host + \
+                               "/" + dbname)  # config.sql_dbname)
         return engine.connect()
 
 
@@ -84,8 +79,8 @@ def connect2db_engine(dbname):
     :return:
     """
     try:
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
-                               "/" + dbname, isolation_level="AUTOCOMMIT")  # cfg.sql_dbname)
+        engine = create_engine("postgresql://" + config.sql_name + ":" + config.sql_password + "@" + config.sql_host + \
+                               "/" + dbname, isolation_level="AUTOCOMMIT")  # config.sql_dbname)
 
         eng = engine.connect()
         create_tables_as_needed(engine, eng)
@@ -93,18 +88,18 @@ def connect2db_engine(dbname):
 
         return engine
     except:
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
+        engine = create_engine("postgresql://" + config.sql_name + ":" + config.sql_password + "@" + config.sql_host + \
                                "/")
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
-        eng.execute("create database " + dbname + ';')  # '#cfg.sql_dbname + ';')
+        eng.execute("create database " + dbname + ';')  # '#config.sql_dbname + ';')
 
         create_tables_as_needed(engine, eng)
         eng.connection.connection.set_isolation_level(1)
         eng.close()
 
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" + cfg.sql_password + "@" + cfg.sql_host + \
-                               "/" + dbname, isolation_level="AUTOCOMMIT")  # cfg.sql_dbname)
+        engine = create_engine("postgresql://" + config.sql_name + ":" + config.sql_password + "@" + config.sql_host + \
+                               "/" + dbname, isolation_level="AUTOCOMMIT")  # config.sql_dbname)
         return engine
 
 
@@ -113,7 +108,7 @@ def connect2gdb():
     Connect to Neo4J
     :return:
     """
-    graph = Graph("http://" + cfg.neo_name + ":" + cfg.neo_password + "@" + cfg.neo_host + "/db/" + cfg.neo_db)
+    graph = Graph("http://" + config.neo_name + ":" + config.neo_password + "@" + config.neo_host + "/db/" + config.neo_db)
     return graph
 
 
@@ -195,7 +190,7 @@ def generate_graph(dependency):
                 rankbyline = sorted(rankbyline, key=lambda d: d[1], reverse=True)
 
                 if len(rankbyline) == 0:
-                    if dep not in special_type:
+                    if dep not in ['np', 'pd']:
                         candidate_node = 'var_' + dep + '_' + str(1)
                         G.add_node(candidate_node, line_id=1, var=dep)
                     else:

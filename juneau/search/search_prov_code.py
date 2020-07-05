@@ -1,22 +1,19 @@
-import queue
-import logging
-import networkx as nx
 import os
 import pickle
+import queue
+
 
 class SearchProv:
 
     def __star_dis(self, listA, listB):
         listA = sorted(listA)
         listB = sorted(listB)
-        #print(listA, listB)
         lenA = len(listA)
         lenB = len(listB)
         i = 0
         j = 0
         interset = []
-        while(i < lenA and j < lenB):
-            #print(listA[i], listB[j], listA[i] == listB[j])
+        while i < lenA and j < lenB:
             if listA[i] == listB[j]:
                 interset.append(listA[i])
                 i += 1
@@ -26,7 +23,7 @@ class SearchProv:
             elif listA[i] > listB[j]:
                 j += 1
             else:
-                print(i,j)
+                print(i, j)
         dist = abs(lenA - lenB) + max(lenA, lenB) - len(interset)
         return dist
 
@@ -69,7 +66,7 @@ class SearchProv:
         node_list = {}
         q = queue.Queue()
         q.put(qnode)
-        while(not q.empty()):
+        while (not q.empty()):
             temp_node = q.get()
             if temp_node not in node_list:
                 node_list[temp_node] = {}
@@ -105,8 +102,8 @@ class SearchProv:
         return Graphs
 
     def __init__(self, graphs):
-        #self.Graphs = graphs
-        self.Graphs_Dependencies = graphs #self.__get_all_node_dependencies()
+        # self.Graphs = graphs
+        self.Graphs_Dependencies = graphs  # self.__get_all_node_dependencies()
 
     def search_topk(self, query, k):
         return self.Graph_Edit_Dis(query, k)
@@ -114,9 +111,8 @@ class SearchProv:
     def search_score_rank(self, query):
         distance_rank = []
         for i in self.Graphs_Dependencies.keys():
-            #for j in self.Graphs_Dependencies[i].keys():
+            # for j in self.Graphs_Dependencies[i].keys():
             dist = self.Star_Mapping_Dis(query, self.Graphs_Dependencies[i])
             distance_rank.append((i, dist))
         distance_rank = sorted(distance_rank, key=lambda d: d[1])
         return distance_rank
-

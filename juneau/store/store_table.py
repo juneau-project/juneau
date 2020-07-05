@@ -5,12 +5,11 @@ import numpy as np
 
 from sqlalchemy import create_engine
 
-from juneau.cost_func import compute_table_size
+from juneau.utils.cost_func import compute_table_size
 
 import juneau.config as cfg
 
 import logging
-#logging.basicConfig(level=logging.DEBUG)
 
 
 class Store_Seperately:
@@ -124,16 +123,18 @@ class Store_Seperately:
         self.eng = self.__connect2db()
         nflg = True
         try:
-            old_table = pd.read_sql_table('rtable'+str(idi), self.eng, schema='rowstore')
+            old_table = pd.read_sql_table('rtable' + str(idi), self.eng, schema='rowstore')
         except:
             old_table = None
             nflg = False
 
         if nflg == False:
-            new_table.to_sql(name='rtable' + str(idi) + '_' + str(vid), con=self.eng, index=False, schema='rowstore', if_exists='replace')
+            new_table.to_sql(name='rtable' + str(idi) + '_' + str(vid), con=self.eng, index=False, schema='rowstore',
+                             if_exists='replace')
         else:
             if new_table.equals(old_table) == False:
-                new_table.to_sql(name = 'rtable' + str(idi) + '_' + str(vid), con = self.eng, index = False, schema = 'rowstore', if_exists = 'replace')
+                new_table.to_sql(name='rtable' + str(idi) + '_' + str(vid), con=self.eng, index=False,
+                                 schema='rowstore', if_exists='replace')
         end_time = timeit.default_timer()
         self.update_time = self.update_time + end_time - start_time
         self.eng.close()

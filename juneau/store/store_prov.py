@@ -1,24 +1,20 @@
-from juneau.funclister import FuncLister
 import ast
-import networkx as nx
 import json
-import juneau.config as cfg
-import psycopg2
-import pandas as pd
-
-import sys
-special_type = ['np', 'pd']
 import logging
+import sys
 
-#logging.basicConfig(level=logging.DEBUG)
+import networkx as nx
+import pandas as pd
+import psycopg2
+
+import juneau.config as cfg
+from juneau.utils.funclister import FuncLister
+
+special_type = ['np', 'pd']
+
 
 class Store_Lineage:
-
     conn = None
-
-    # def __connect2db(self):
-    #     engine = create_engine("postgresql://" + user_name + ":" + password + "@localhost/" + self.dbname)
-    #     return engine.connect()
 
     def __connect2db_init(self):
         # get a connection, if a connect cannot be made an exception will be raised here
@@ -35,20 +31,20 @@ class Store_Lineage:
                 conn = psycopg2.connect(conn_string)
                 logging.info("Connecting Database Succeeded!\n")
                 cursor = conn.cursor()
-                #query1 = "DROP SCHEMA IF EXISTS graph_model CASCADE;"
-                #query2 = "CREATE SCHEMA graph_model;"
+                # query1 = "DROP SCHEMA IF EXISTS graph_model CASCADE;"
+                # query2 = "CREATE SCHEMA graph_model;"
                 query3 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".dependen (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
                 query4 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".line2cid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
                 query5 = "CREATE TABLE IF NOT EXISTS " + cfg.sql_graph + ".lastliid (view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
 
-                #try:
+                # try:
                 #    cursor.execute(query1)
                 #    conn.commit()
 
-    #            except:
-    #                print("Drop Schema Failed!\n")
+                #            except:
+                #                print("Drop Schema Failed!\n")
                 try:
-    #                cursor.execute(query2)
+                    #                cursor.execute(query2)
                     cursor.execute(query3)
                     cursor.execute(query4)
                     cursor.execute(query5)
@@ -98,15 +94,15 @@ class Store_Lineage:
         lid = 1
         fflg = False
         for cid, cell in enumerate(code_list):
-            #logging.info(cid)
-            #logging.info(cell)
+            # logging.info(cid)
+            # logging.info(cell)
 
             if "\\n" in cell:
                 codes = cell.split("\\n")
-                #logging.info(codes)
+                # logging.info(codes)
             elif "\n" in cell:
                 codes = cell.split("\n")
-                #logging.info(codes)
+                # logging.info(codes)
 
             new_codes = []
             for code in codes:
@@ -121,7 +117,6 @@ class Store_Lineage:
                 if temp_code[:6].lower() == 'return':
                     fflg = False
                     continue
-
 
                 code = code.strip("\n")
                 code = code.strip(" ")
@@ -150,9 +145,7 @@ class Store_Lineage:
                         line2cid[lid] = cid
                         lid = lid + 1
                 except:
-                    logging.info("error with "  + code)
-
-
+                    logging.info("error with " + code)
 
             all_code = all_code + '\n'.join(new_codes) + '\n'
 
@@ -167,8 +160,8 @@ class Store_Lineage:
 
     def generate_graph(self, code_list, nb_name):
 
-        #self.notebook = nb_name
-        #self.nid = nid
+        # self.notebook = nb_name
+        # self.nid = nid
 
         dependency, line2cid, all_code = self.__parse_code(code_list)
         G = nx.DiGraph()
@@ -181,44 +174,44 @@ class Store_Lineage:
                 if type(ele) is tuple:
                     ele = ele[0]
                 left_node.append('var_' + ele + '_' + str(i) + '_' + str(nb_name))
-        #print('left',left_node)
+            # print('left',left_node)
 
             for ele in left:
                 if type(ele) is tuple:
                     ele = ele[0]
 
                 new_node = 'var_' + ele + '_' + str(i) + '_' + str(nb_name)
-                G.add_node(new_node, cell_id = line2cid[i], line_id = i, var = ele)
+                G.add_node(new_node, cell_id=line2cid[i], line_id=i, var=ele)
 
-                #print(nbname)
-                #print(right)
+                # print(nbname)
+                # print(right)
                 for dep, ename in right:
                     candidate_list = G.nodes
                     rankbyline = []
                     for cand in candidate_list:
-                        #print('cand', cand)
+                        # print('cand', cand)
                         if G.nodes[cand]['var'] == dep:
                             if cand in left_node:
-                                #print(cand)
+                                # print(cand)
                                 continue
                             rankbyline.append((cand, G.nodes[cand]['line_id']))
-                    rankbyline = sorted(rankbyline, key = lambda d:d[1], reverse= True)
+                    rankbyline = sorted(rankbyline, key=lambda d: d[1], reverse=True)
 
                     if len(rankbyline) == 0:
                         if dep not in special_type:
                             candidate_node = 'var_' + dep + '_' + str(1) + '_' + str(nb_name)
-                            G.add_node(candidate_node, cell_id = 0, line_id = 1, var=dep)
+                            G.add_node(candidate_node, cell_id=0, line_id=1, var=dep)
                         else:
                             candidate_node = dep + str(nb_name)
-                            G.add_node(candidate_node, cell_id = 0, line_id = 1, var = dep)
+                            G.add_node(candidate_node, cell_id=0, line_id=1, var=dep)
 
                     else:
                         candidate_node = rankbyline[0][0]
 
-                #print(new_node, candidate_node)
+                    # print(new_node, candidate_node)
                     if dep in special_type:
                         ename = dep + "." + ename
-                        G.add_edge(new_node, candidate_node, label = ename)
+                        G.add_edge(new_node, candidate_node, label=ename)
                     else:
                         G.add_edge(new_node, candidate_node, label=ename)
 
@@ -229,9 +222,9 @@ class Store_Lineage:
         logging.info('Updating provenance...')
         conn = self.eng.connect()
         try:
-            dep_db = pd.read_sql_table("dependen", conn, schema = cfg.sql_graph)
-            l2c_db = pd.read_sql_table("line2cid", conn, schema = cfg.sql_graph)
-            lid_db = pd.read_sql_table("lastliid", conn, schema = cfg.sql_graph)
+            dep_db = pd.read_sql_table("dependen", conn, schema=cfg.sql_graph)
+            l2c_db = pd.read_sql_table("line2cid", conn, schema=cfg.sql_graph)
+            lid_db = pd.read_sql_table("lastliid", conn, schema=cfg.sql_graph)
             var_list = dep_db['view_id'].tolist()
 
         except:
@@ -246,9 +239,9 @@ class Store_Lineage:
             logging.error("parse code failed")
 
         try:
-            #self.generate_graph(code_list, nb_name)
-            #logging.info("Detected Dependency: ", dep)
-            #logging.info("Detected var_list: ", var_list)
+            # self.generate_graph(code_list, nb_name)
+            # logging.info("Detected Dependency: ", dep)
+            # logging.info("Detected var_list: ", var_list)
             dep_str = json.dumps(dep)
             l2c_str = json.dumps(c2i)
             lid_str = json.dumps(lid)
@@ -258,17 +251,20 @@ class Store_Lineage:
             self.view_cmd[store_name] = dep_str
             self.l2d_cmd[store_name] = l2c_str
 
-            encode1 = dep_str #base64.b64encode(dep)
-            encode2 = l2c_str #base64.b64encode(c2i)
+            encode1 = dep_str  # base64.b64encode(dep)
+            encode2 = l2c_str  # base64.b64encode(c2i)
 
             if store_name not in var_list and store_name not in self.Variable:
 
                 logging.debug('Inserting values into dependen and line2cid')
                 conn = self.eng.connect()
                 try:
-                    conn.execute("INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + store_name + "\', \'" + encode1 + "\')")
-                    conn.execute("INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + store_name + "\', \'" + encode2 + "\')")
-                    conn.execute("INSERT INTO " + cfg.sql_graph + ".lastliid VALUES (\'" + store_name + "\', \'" + lid_str + "\')")
+                    conn.execute(
+                        "INSERT INTO " + cfg.sql_graph + ".dependen VALUES (\'" + store_name + "\', \'" + encode1 + "\')")
+                    conn.execute(
+                        "INSERT INTO " + cfg.sql_graph + ".line2cid VALUES (\'" + store_name + "\', \'" + encode2 + "\')")
+                    conn.execute(
+                        "INSERT INTO " + cfg.sql_graph + ".lastliid VALUES (\'" + store_name + "\', \'" + lid_str + "\')")
                     self.Variable.append(store_name)
                 except:
                     logging.error('Unable to insert into tables')
@@ -277,11 +273,5 @@ class Store_Lineage:
         except:
             logging.error('Unable to update provenance due to error ' + str(sys.exc_info()[0]))
 
-
     def close_dbconnection(self):
         self.eng.close()
-
-
-
-
-

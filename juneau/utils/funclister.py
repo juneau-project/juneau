@@ -1,7 +1,5 @@
 import ast
-import logging
 
-#logging.basicConfig(level=logging.DEBUG)
 
 class FuncLister(ast.NodeVisitor):
     def __init__(self):
@@ -109,7 +107,7 @@ class FuncLister(ast.NodeVisitor):
         if 'elts' in node.__dict__:
             for ele in node.elts:
                 if 'id' in ele.__dict__:
-                    return_node.append((ele.id,'List'))
+                    return_node.append((ele.id, 'List'))
                 else:
                     ret = self.visit(ele)
                     if ret != None:
@@ -131,8 +129,6 @@ class FuncLister(ast.NodeVisitor):
     def visit_Call(self, node):
 
         return_node = []
-#        print(node.__dict__)
-#        print(node.func.__dict__)
 
         ret = self.visit(node.func)
         if ret:
@@ -143,7 +139,6 @@ class FuncLister(ast.NodeVisitor):
                 if 'id' in node.func.__dict__:
                     return_node.append((na.id, node.func.id))
                 else:
-                    #print(node.func.attr)
                     return_node.append((na.id, node.func.attr))
             else:
                 if 'id' in node.func.__dict__:
@@ -173,15 +168,9 @@ class FuncLister(ast.NodeVisitor):
                     if ret != None:
                         for ri, rj in ret:
                             return_node.append((ri, fname))
-
-
-
         return return_node
 
     def visit_Assign(self, node):
-        #print("here!")
-        #print(node.__dict__)
-
         left_array = []
         for nd in node.targets:
             if 'id' in nd.__dict__:
@@ -191,7 +180,6 @@ class FuncLister(ast.NodeVisitor):
                 if ret:
                     left_array = left_array + ret
 
-        #print(node.value.__dict__)
         right_array = []
         if 'id' in node.value.__dict__:
             right_array.append((node.value.id, 'Assign'))
@@ -201,8 +189,3 @@ class FuncLister(ast.NodeVisitor):
                 right_array = right_array + ret
 
         self.dependency[node.lineno] = (left_array, right_array)
-        #logging.info(node.lineno);
-        #logging.info(left_array);
-        #logging.info(right_array);
-
-

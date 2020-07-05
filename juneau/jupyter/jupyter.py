@@ -2,26 +2,20 @@ import logging
 import site
 import subprocess
 import sys
+from threading import Lock
 from queue import Empty
 
 from jupyter_client import BlockingKernelClient
 from jupyter_client import find_connection_file
 
 import juneau.config as cfg
-from juneau.file_lock import FileLock
 
-jupyter_lock = FileLock('my.lock')
-TIMEOUT = 6
+jupyter_lock = Lock()
 
 
 def request_var(kid, var):
     """
-    Request the contents of a dataframe or matrix
-
-    :param kid:
-    :param var:
-    :return: Tuple with first parameter being JSON form of output, 2nd parameter being error if
-             1st is None
+    Requests the contents of a dataframe or matrix.
     """
     code = "import pandas as pd\nimport numpy as np\nif type(" + var + ") " \
                                                                        "is pd.DataFrame or type(" + var + ") is np.ndarray or type(" + var + ") is list:\n"
@@ -31,11 +25,7 @@ def request_var(kid, var):
 
 def connect_psql(kid, var):
     """
-    Create a juneau_connect() function for use in the notebook
-
-    :param kid:
-    :param var:
-    :return:
+    Create a juneau_connect() function for use in the notebook.
     """
     code = 'from sqlalchemy import create_engine\n' + \
            'user_name = \'' + cfg.sql_name + '\'\n' + \
@@ -48,8 +38,6 @@ def connect_psql(kid, var):
 def exec_code(kid, var, code):
     # load connection info and init communication
     cf = find_connection_file(kid)  # str(port))
-
-    global jupyter_lock
 
     jupyter_lock.acquire()
     try:
@@ -106,8 +94,6 @@ def exec_code(kid, var, code):
 
 # Execute via IPython kernel
 def exec_ipython(kernel_id, search_var, py_file):
-    global jupyter_lock
-
     jupyter_lock.acquire()
     try:
         logging.debug('Exec ' + py_file)

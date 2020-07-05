@@ -1,24 +1,16 @@
-import pandas as pd
-from py2neo import Graph, Node, Relationship, cypher, NodeMatcher
 import base64
-
 import logging
 
-#logging.basicConfig(level=logging.DEBUG)
+import pandas as pd
+from py2neo import Node, Relationship, NodeMatcher
+
 
 class Store_Provenance:
 
-    # def __connect2gdb(self):
-    #     graph = Graph("http://neo4j:yizhang@localhost:7474/db/data")
-    #     graph.delete_all()
-    #     return graph
-
     def __init__(self, postgres_eng, graph_eng):
-        self.graph_db = graph_eng #self.__connect2gdb()
+        self.graph_db = graph_eng
         self.postgres_eng = postgres_eng
         self.code_dict = {}
-
-
 
     def __initialize_code_dict(self):
 
@@ -49,7 +41,7 @@ class Store_Provenance:
     def __fetch_code_dict(self):
         conn = self.postgres_eng.connect()
         try:
-            code_table = pd.read_sql_table('code_dict', conn, schema = 'nb_provenance')
+            code_table = pd.read_sql_table('code_dict', conn, schema='nb_provenance')
             for index, row in code_table.iterrows():
                 self.code_dict[row['code']] = int(row['cell_id'])
             conn.close()
@@ -60,13 +52,13 @@ class Store_Provenance:
             return False
 
     def store_code_dict(self):
-        dict_store = {'code':[], 'cell_id': []}
+        dict_store = {'code': [], 'cell_id': []}
         for i in self.code_dict.keys():
             dict_store['code'].append(i)
             dict_store['cell_id'].append(self.code_dict[i])
         dict_store_code = pd.DataFrame.from_dict(dict_store)
         conn = self.postgres_eng.connect()
-        dict_store_code.to_sql('code_dict', conn, schema = 'nb_provenance', if_exists = 'replace')
+        dict_store_code.to_sql('code_dict', conn, schema='nb_provenance', if_exists='replace')
         conn.close()
         return True
 
@@ -84,15 +76,15 @@ class Store_Provenance:
         """
         self.__fetch_code_dict()
 
-        bcode = str(base64.b64encode(bytes(code,'utf-8')))
+        bcode = str(base64.b64encode(bytes(code, 'utf-8')))
         matcher = NodeMatcher(self.graph_db)
 
-        #logging.info(bcode)
+        # logging.info(bcode)
         nbcode = bcode[2:-1]
-        #logging.info(list(self.code_dict.items())[:10])
+        # logging.info(list(self.code_dict.items())[:10])
 
         if bcode in self.code_dict:
-            current_cell = matcher.match("Cell", source_code = bcode).first()
+            current_cell = matcher.match("Cell", source_code=bcode).first()
         elif nbcode in self.code_dict:
             current_cell = matcher.match("Cell", source_code=bcode).first()
         else:
@@ -100,7 +92,7 @@ class Store_Provenance:
                 max_id = max(list(self.code_dict.values()))
             else:
                 max_id = 0
-            current_cell = Node('Cell', name = 'cell_' + str(max_id + 1), source_code = bcode)
+            current_cell = Node('Cell', name='cell_' + str(max_id + 1), source_code=bcode)
             self.graph_db.create(current_cell)
             self.graph_db.push(current_cell)
 
@@ -120,10 +112,10 @@ class Store_Provenance:
 
         var_name = str(cell_id) + "_" + var + "_" + nb_name
 
-        current_var = matcher.match("Var", name = var_name).first()
+        current_var = matcher.match("Var", name=var_name).first()
 
         if current_var is None:
-            current_var = Node('Var', name = var_name)
+            current_var = Node('Var', name=var_name)
 
             self.graph_db.create(current_var)
             self.graph_db.push(current_var)

@@ -1,16 +1,15 @@
-from distutils.core import setup
-
+from setuptools import setup, find_packages
 setup(
     name="juneau",
     version="0.0.1",
     description="Data Extension for Jupyter notebook",
-    packages=['juneau'],
+    packages=find_packages(),
     scripts=[
-        'juneau/print_var.py',
-        'juneau/jupyter.py',
-        'juneau/connect_psql.py',
-        'juneau/search.py',
-        'juneau/table_db.py'
+        'juneau/jupyter/print_var.py',
+        'juneau/jupyter/jupyter.py',
+        'juneau/search/search.py',
+        'juneau/db/connect_psql.py',
+        'juneau/db/table_db.py'
     ],
     install_requires=[
         'setuptools',
