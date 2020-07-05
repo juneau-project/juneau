@@ -17,7 +17,7 @@ from juneau.table_db import connect2db_engine
 from juneau.table_db import connect2gdb
 from juneau.ut import clean_long_nbname
 
-indexed = {}
+INDEXED = set()
 nb_cell_id_node = {}
 search_test_class = None
 
@@ -101,7 +101,6 @@ class JuneauHandler(IPythonHandler):
         return sta, var_obj
 
     def put(self):
-        global indexed
         global nb_cell_id_node
 
         logging.info(f'Juneau indexing request: {self.var}')
@@ -109,9 +108,9 @@ class JuneauHandler(IPythonHandler):
         cleaned_nb_name = self._clean_notebook_name()
         code_list = self.code.strip("\\n#\\n").split("\\n#\\n")
         store_table_name = f'{self.cell_id}_{self.var}_{cleaned_nb_name}'
-        logging.info("stored table: " + str(indexed))
+        logging.info(f'Stored tables: {INDEXED}')
 
-        if store_table_name in indexed:
+        if store_table_name in INDEXED:
             logging.info('Request to index is already registered.')
         elif self.var not in code_list[-1]:
             logging.info('Not a variable in the current cell.')
@@ -229,7 +228,7 @@ class JuneauHandler(IPythonHandler):
             try:
                 code_list = self.code.split("\\n#\\n")
                 self.store_prov_db_class.InsertTable_Model(store_table_name, self.var, code_list, var_nb_name)
-                indexed[store_table_name] = True
+                INDEXED.add(store_table_name)
             except:
                 logging.error(
                     'Unable to store provenance of ' + store_table_name + ' due to error' + str(sys.exc_info()[0]))
