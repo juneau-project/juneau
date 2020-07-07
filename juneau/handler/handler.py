@@ -1,24 +1,16 @@
-# MIT License
+# Copyright 2020 Juneau
 #
-# Copyright (c) 2020 Juneau
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import json
 import logging
@@ -45,7 +37,7 @@ search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
 class JuneauHandler(IPythonHandler):
     """
     The Juneau Handler that coordinates the notebook server app instance. Essentially,
-    this class is in charge of communicating the frontend with the backend.
+    this class is in charge of communicating the frontend with the backend via PUT and POST.
     """
 
     def initialize(self):
@@ -75,6 +67,8 @@ class JuneauHandler(IPythonHandler):
             on PUT but not on POST. That is why we check if the key is present in the
             dictionary and otherwise assign it to `None`.
 
+            This function is called on *every* request.
+
         """
 
         data = self.request.arguments
@@ -86,7 +80,7 @@ class JuneauHandler(IPythonHandler):
         self.mode = int(data['mode'][0].decode("utf-8")) if 'mode' in data else None
         self.nb_name = data['nb_name'][0].decode("utf-8") if 'nb_name' in data else None
 
-        self.done = {}
+        self.done = set()
         self.data_trans = {}
         self.graph_db = None
         self.psql_engine = None
@@ -94,16 +88,22 @@ class JuneauHandler(IPythonHandler):
         self.store_prov_db_class = None
         self.prev_node = None
 
-    def find_variable(self, search_var, kernel_id):
+    def find_variable(self):
+        """
+        Finds and tries to return the contents of a variable in the notebook.
+
+        Returns:
+            tuple - the status (`True` or `False`), and the variable if `True`.
+        """
         # Make sure we have an engine connection in case we want to read
-        if kernel_id not in self.done:
-            o2, err = jupyter.exec_ipython(kernel_id, search_var, 'connect_psql')
-            self.done[kernel_id] = {}
+        if self.kernel_id not in self.done:
+            o2, err = jupyter.exec_connection_to_psql(self.kernel_id)
+            self.done.add(self.kernel_id)
             logging.info(o2)
             logging.info(err)
 
-        logging.info('Looking up variable ' + search_var)
-        output, error = jupyter.request_var(kernel_id, search_var)
+        logging.info('Looking up variable ' + self.var)
+        output, error = jupyter.request_var(self.kernel_id, self.var)
         logging.info('Returned with variable value.')
 
         if error != "" or output == "" or output is None:
@@ -135,7 +135,7 @@ class JuneauHandler(IPythonHandler):
             logging.info('Not a variable in the current cell.')
         else:
             logging.info("Start to store " + self.var)
-            success, output = self.find_variable(self.var, self.kernel_id)
+            success, output = self.find_variable()
 
             if success:
                 logging.info("Get Value of " + self.var)
@@ -199,7 +199,7 @@ class JuneauHandler(IPythonHandler):
                 self.data_trans = {'res': "", 'state': str('false')}
                 self.write(json.dumps(self.data_trans))
         else:
-            success, output = self.find_variable(self.var, self.kernel_id)
+            success, output = self.find_variable()
 
             if success:
                 data_json = search_tables(search_test_class, output, self.mode, self.code, self.var)

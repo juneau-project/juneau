@@ -1,7 +1,27 @@
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import ast
 
 
 class FuncLister(ast.NodeVisitor):
+    """
+    A node visitor base class that walks the abstract syntax tree
+    and calls a visitor function for every node found. This is used
+    in Juneau to TODO: why is FuncLister used in Juneau?
+    """
+
     def __init__(self):
         self.dependency = {}
 
@@ -49,7 +69,7 @@ class FuncLister(ast.NodeVisitor):
             return_node.append((node.operand.id, str(node.op)))
         else:
             ret = self.visit(node.operand)
-            if ret != None:
+            if ret is not None:
                 return_node = return_node + ret
         return return_node
 
@@ -60,14 +80,14 @@ class FuncLister(ast.NodeVisitor):
             return_node.append((node.left.id, str(node.op)))
         else:
             ret = self.visit(node.left)
-            if ret != None:
+            if ret is not None:
                 return_node = return_node + ret
 
         if 'id' in node.right.__dict__:
             return_node.append((node.right.id, str(node.op)))
         else:
             ret = self.visit(node.right)
-            if ret != None:
+            if ret is not None:
                 return_node = return_node + ret
 
         return return_node
@@ -79,7 +99,7 @@ class FuncLister(ast.NodeVisitor):
                 return_node.append((nv.id, str(node.op)))
             else:
                 ret = self.visit(nv)
-                if ret != None:
+                if ret is not None:
                     return_node = return_node + ret
 
         return return_node
@@ -110,7 +130,7 @@ class FuncLister(ast.NodeVisitor):
                     return_node.append((ele.id, 'List'))
                 else:
                     ret = self.visit(ele)
-                    if ret != None:
+                    if ret is not None:
                         return_node = return_node + ret
         return return_node
 
@@ -122,7 +142,7 @@ class FuncLister(ast.NodeVisitor):
                     return_node.append((ele.id, 'Tuple'))
                 else:
                     ret = self.visit(ele)
-                    if ret != None:
+                    if ret is not None:
                         return_node = return_node + ret
         return return_node
 
@@ -147,7 +167,7 @@ class FuncLister(ast.NodeVisitor):
                     fname = node.func.attr
 
                 ret = self.visit(na)
-                if ret != None:
+                if ret is not None:
                     for ri, rj in ret:
                         return_node.append((ri, fname))
 
@@ -165,7 +185,7 @@ class FuncLister(ast.NodeVisitor):
                         fname = node.func.attr
 
                     ret = self.visit(nk.value)
-                    if ret != None:
+                    if ret is not None:
                         for ri, rj in ret:
                             return_node.append((ri, fname))
         return return_node
@@ -185,7 +205,7 @@ class FuncLister(ast.NodeVisitor):
             right_array.append((node.value.id, 'Assign'))
         else:
             ret = self.visit(node.value)
-            if ret != None:
+            if ret is not None:
                 right_array = right_array + ret
 
         self.dependency[node.lineno] = (left_array, right_array)
