@@ -102,29 +102,26 @@ class JuneauHandler(IPythonHandler):
             logging.info(o2)
             logging.info(err)
 
-        logging.info('Looking up variable ' + self.var)
+        logging.info(f'Looking up variable {self.var}')
         output, error = jupyter.request_var(self.kernel_id, self.var)
         logging.info('Returned with variable value.')
 
-        if error != "" or output == "" or output is None:
+        if error or not output:
             sta = False
             return sta, error
         else:
             try:
                 var_obj = pd.read_json(output, orient='split')
                 sta = True
-            except:
-                logging.info('Parsing: ' + output)
-                sta = False
+            except Exception as e:
+                logging.error(f"Found error {e}")
                 var_obj = None
+                sta = False
 
         return sta, var_obj
 
     def put(self):
-        global nb_cell_id_node
-
         logging.info(f'Juneau indexing request: {self.var}')
-
         cleaned_nb_name = clean_notebook_name(self.nb_name)
         code_list = self.code.strip("\\n#\\n").split("\\n#\\n")
         store_table_name = f'{self.cell_id}_{self.var}_{cleaned_nb_name}'
@@ -190,30 +187,18 @@ class JuneauHandler(IPythonHandler):
 
     def post(self):
         logging.info('Juneau handling search request')
-
         if self.mode == 0:  # return table
-            if self.var in search_test_class.real_tables:
-                self.data_trans = {'res': "", 'state': str('true')}
-                self.write(json.dumps(self.data_trans))
-            else:
-                self.data_trans = {'res': "", 'state': str('false')}
-                self.write(json.dumps(self.data_trans))
+            self.data_trans = {'res': "", 'state': self.var in search_test_class.real_tables}
+            self.write(json.dumps(self.data_trans))
         else:
             success, output = self.find_variable()
-
             if success:
                 data_json = search_tables(search_test_class, output, self.mode, self.code, self.var)
-                if data_json != "":
-                    self.data_trans = {'res': data_json, 'state': str('true')}
-                    self.write(json.dumps(self.data_trans))
-                else:
-                    self.data_trans = {'res': data_json, 'state': str('false')}
-                    self.write(json.dumps(self.data_trans))
-
+                self.data_trans = {'res': data_json, 'state': data_json != ""}
+                self.write(json.dumps(self.data_trans))
             else:
-                logging.error("The table was not found:")
-                logging.error(output)
-                self.data_trans = {'error': str(output), 'state': str('false')}
+                logging.error(f"The table was not found: {output}")
+                self.data_trans = {'error': output, 'state': False}
                 self.write(json.dumps(self.data_trans))
 
     def store_table(self, output, store_table_name, var_nb_name):
@@ -233,8 +218,13 @@ class JuneauHandler(IPythonHandler):
         conn = self.psql_engine.connect()
 
         try:
-            output.to_sql(name='rtable' + store_table_name, con=conn,
-                          schema=cfg.sql_dbs, if_exists='replace', index=False)
+            output.to_sql(
+                name=f'rtable{store_table_name}',
+                con=conn,
+                schema=cfg.sql_dbs,
+                if_exists='replace',
+                index=False
+            )
             logging.info('Base table stored')
             try:
                 code_list = self.code.split("\\n#\\n")
@@ -246,14 +236,7 @@ class JuneauHandler(IPythonHandler):
                     f'due to error {e}'
                 )
             logging.info(f"Returning after indexing {store_table_name}")
-        except ValueError:
-            logging.error(f'Unable to store {store_table_name} due to value error')
-        except NoSuchTableError:
-            logging.error(f'Unable to store {store_table_name} due to no-such-table error')
-        except KeyboardInterrupt:
-            return
         except Exception as e:
             logging.error(f'Unable to store {store_table_name} due to error {e}')
-            raise
         finally:
             conn.close()
