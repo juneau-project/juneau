@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Main entry point for the server extension.
+"""
+
 from notebook.utils import url_path_join
 
 from juneau.handler.handler import JuneauHandler
@@ -19,14 +23,13 @@ from juneau.handler.handler import JuneauHandler
 
 def load_jupyter_server_extension(nb_server_app):
     """
-    Main entry point for the server extension. Registers the `JuneauHandler`
-    with the notebook server.
+    Registers the `JuneauHandler` with the notebook server.
 
     Args:
         nb_server_app (NotebookWebApplication): handle to the Notebook webserver instance.
     """
     nb_server_app.log.info("Juneau extension loading...")
     web_app = nb_server_app.web_app
-    route_pattern = url_path_join(web_app.settings['base_url'], '/juneau')
-    web_app.add_handlers('.*$', [(route_pattern, JuneauHandler)])
+    route_pattern = url_path_join(web_app.settings["base_url"], "/juneau")
+    web_app.add_handlers(".*$", [(route_pattern, JuneauHandler)])
     nb_server_app.log.info("Juneau extension loaded.")

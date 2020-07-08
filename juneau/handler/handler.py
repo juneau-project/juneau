@@ -23,7 +23,7 @@ from juneau.db.table_db import connect2db_engine, connect2gdb
 from juneau.jupyter import jupyter
 from juneau.search.search import search_tables
 from juneau.search.search_withprov_opt import WithProv_Optimized
-from juneau.store.store_graph import Store_Provenance
+from juneau.store.store_graph import ProvenanceStorage
 from juneau.store.store_prov import Store_Lineage
 from juneau.utils.utils import clean_notebook_name
 
@@ -145,7 +145,7 @@ class JuneauHandler(IPythonHandler):
                 if not self.psql_engine:
                     self.psql_engine = connect2db_engine(cfg.sql_dbname)
                 if not self.store_graph_db_class:
-                    self.store_graph_db_class = Store_Provenance(
+                    self.store_graph_db_class = ProvenanceStorage(
                         self.psql_engine, self.graph_db
                     )
                 if not self.store_prov_db_class:

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Module that injects code into the kernel to allow printing variables.
+"""
+
 import logging
 import sys
 
@@ -23,21 +27,18 @@ logging.basicConfig(level=logging.INFO)
 
 
 def main(kid, var):
-    # load connection info and init communication
+    # Load connection info and init communications.
     cf = find_connection_file(kid)  # str(port))
     km = BlockingKernelClient(connection_file=cf)
     km.load_connection_file()
     km.start_channels()
 
-    code = (
-        "import pandas as pd\nimport numpy as np\nif type(" + var + ") "
-        "is pd.DataFrame or type("
-        + var
-        + ") is np.ndarray or type("
-        + var
-        + ") is list:\n"
-    )
-    code = code + "\tprint(" + var + ".to_json(orient='split', index = False))\n"
+    code = f"""
+        import pandas as pd
+        import numpy as np
+        if type({var}) in [pd.DataFrame, np.ndarray, list]:
+            print({var}.to_json(orient='split', index=False))
+        """
     km.execute_interactive(code, timeout=TIMEOUT)
     km.stop_channels()
 
