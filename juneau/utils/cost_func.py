@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+TODO: Explain what this module does.
+"""
+
 import logging
 from difflib import SequenceMatcher
 
@@ -36,18 +40,14 @@ def evaluate_key(vta, vtb, vint, tableA, tableB):
         dictb[i] = dictb_temp[1][idx]
 
     scorea = 0
-    for i in dicta.keys():
-        if i not in dictb:
-            continue
-        else:
-            scorea = scorea + float(dictb[i]) * float(dicta[i]) / float(len(vta))
+    for key in dicta.keys():
+        if key in dictb:
+            scorea = scorea + float(dictb[key]) * float(dicta[key]) / float(len(vta))
 
     scoreb = 0
-    for i in dictb.keys():
-        if i not in dicta:
-            continue
-        else:
-            scoreb = scoreb + float(dicta[i]) * float(dictb[i]) / float(len(vtb))
+    for key in dictb.keys():
+        if key in dicta:
+            scoreb = scoreb + float(dicta[key]) * float(dictb[key]) / float(len(vtb))
 
     sizeab = 0
     for v in vint:

@@ -174,8 +174,8 @@ class JuneauHandler(IPythonHandler):
                     )
                     if self.cell_id not in nb_cell_id_node[cleaned_nb_name]:
                         nb_cell_id_node[cleaned_nb_name][self.cell_id] = self.prev_node
-                except:
-                    logging.error('Unable to store in graph store due to error ' + str(sys.exc_info()[0]))
+                except Exception as e:
+                    logging.error(f'Unable to store in graph store due to error {e}')
 
                 self.store_table(
                     output,
@@ -220,13 +220,16 @@ class JuneauHandler(IPythonHandler):
         """
         Asynchronously stores a table into the database.
 
+        Notes:
+            This is the refactored version of `fn`.
+
         Args:
             output:
             store_table_name:
             var_nb_name:
 
         """
-        logging.info("Indexing new table " + store_table_name)
+        logging.info(f"Indexing new table {store_table_name}")
         conn = self.psql_engine.connect()
 
         try:
@@ -237,19 +240,20 @@ class JuneauHandler(IPythonHandler):
                 code_list = self.code.split("\\n#\\n")
                 self.store_prov_db_class.InsertTable_Model(store_table_name, self.var, code_list, var_nb_name)
                 INDEXED.add(store_table_name)
-            except:
+            except Exception as e:
                 logging.error(
-                    'Unable to store provenance of ' + store_table_name + ' due to error' + str(sys.exc_info()[0]))
-
-            logging.info("Returning after indexing " + store_table_name)
+                    f'Unable to store provenance of {store_table_name} '
+                    f'due to error {e}'
+                )
+            logging.info(f"Returning after indexing {store_table_name}")
         except ValueError:
-            logging.error('Unable to store ' + store_table_name + ' due to value error')
+            logging.error(f'Unable to store {store_table_name} due to value error')
         except NoSuchTableError:
-            logging.error('Unable to store ' + store_table_name + ' due to no-such-table error')
+            logging.error(f'Unable to store {store_table_name} due to no-such-table error')
         except KeyboardInterrupt:
             return
-        except:
-            logging.error('Unable to store ' + store_table_name + ' due to error ' + str(sys.exc_info()[0]))
+        except Exception as e:
+            logging.error(f'Unable to store {store_table_name} due to error {e}')
             raise
         finally:
             conn.close()
