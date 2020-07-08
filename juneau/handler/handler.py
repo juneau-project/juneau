@@ -14,19 +14,17 @@
 
 import json
 import logging
-import sys
 
 import pandas as pd
 from notebook.base.handlers import IPythonHandler
-from sqlalchemy.exc import NoSuchTableError
 
 import juneau.config as cfg
+from juneau.db.table_db import connect2db_engine, connect2gdb
 from juneau.jupyter import jupyter
 from juneau.search.search import search_tables
 from juneau.search.search_withprov_opt import WithProv_Optimized
 from juneau.store.store_graph import Store_Provenance
 from juneau.store.store_prov import Store_Lineage
-from juneau.db.table_db import connect2db_engine, connect2gdb
 from juneau.utils.utils import clean_notebook_name
 
 INDEXED = set()
@@ -73,12 +71,14 @@ class JuneauHandler(IPythonHandler):
 
         data = self.request.arguments
 
-        self.var = data['var'][0].decode("utf-8")
-        self.kernel_id = data['kid'][0].decode("utf-8")
-        self.code = data['code'][0].decode("utf-8")
-        self.cell_id = int(data['cell_id'][0].decode("utf-8")) if 'cell_id' in data else None
-        self.mode = int(data['mode'][0].decode("utf-8")) if 'mode' in data else None
-        self.nb_name = data['nb_name'][0].decode("utf-8") if 'nb_name' in data else None
+        self.var = data["var"][0].decode("utf-8")
+        self.kernel_id = data["kid"][0].decode("utf-8")
+        self.code = data["code"][0].decode("utf-8")
+        self.cell_id = (
+            int(data["cell_id"][0].decode("utf-8")) if "cell_id" in data else None
+        )
+        self.mode = int(data["mode"][0].decode("utf-8")) if "mode" in data else None
+        self.nb_name = data["nb_name"][0].decode("utf-8") if "nb_name" in data else None
 
         self.done = set()
         self.data_trans = {}
@@ -95,23 +95,23 @@ class JuneauHandler(IPythonHandler):
         Returns:
             tuple - the status (`True` or `False`), and the variable if `True`.
         """
-        # Make sure we have an engine connection in case we want to read
+        # Make sure we have an engine connection in case we want to read.
         if self.kernel_id not in self.done:
             o2, err = jupyter.exec_connection_to_psql(self.kernel_id)
             self.done.add(self.kernel_id)
             logging.info(o2)
             logging.info(err)
 
-        logging.info(f'Looking up variable {self.var}')
+        logging.info(f"Looking up variable {self.var}")
         output, error = jupyter.request_var(self.kernel_id, self.var)
-        logging.info('Returned with variable value.')
+        logging.info("Returned with variable value.")
 
         if error or not output:
             sta = False
             return sta, error
         else:
             try:
-                var_obj = pd.read_json(output, orient='split')
+                var_obj = pd.read_json(output, orient="split")
                 sta = True
             except Exception as e:
                 logging.error(f"Found error {e}")
@@ -121,40 +121,37 @@ class JuneauHandler(IPythonHandler):
         return sta, var_obj
 
     def put(self):
-        logging.info(f'Juneau indexing request: {self.var}')
+        logging.info(f"Juneau indexing request: {self.var}")
+        logging.info(f"Stored tables: {INDEXED}")
+
         cleaned_nb_name = clean_notebook_name(self.nb_name)
         code_list = self.code.strip("\\n#\\n").split("\\n#\\n")
-        store_table_name = f'{self.cell_id}_{self.var}_{cleaned_nb_name}'
-        logging.info(f'Stored tables: {INDEXED}')
+        store_table_name = f"{self.cell_id}_{self.var}_{cleaned_nb_name}"
+
         if store_table_name in INDEXED:
-            logging.info('Request to index is already registered.')
+            logging.info("Request to index is already registered.")
         elif self.var not in code_list[-1]:
-            logging.info('Not a variable in the current cell.')
+            logging.info("Not a variable in the current cell.")
         else:
-            logging.info("Start to store " + self.var)
+            logging.info(f"Starting to store {self.var}")
             success, output = self.find_variable()
 
             if success:
-                logging.info("Get Value of " + self.var)
+                logging.info(f"Getting value of {self.var}")
                 logging.info(output.head())
 
                 if not self.graph_db:
                     self.graph_db = connect2gdb()
-
                 if not self.psql_engine:
                     self.psql_engine = connect2db_engine(cfg.sql_dbname)
-
                 if not self.store_graph_db_class:
-                    psql_db = self.psql_engine
-                    self.store_graph_db_class = Store_Provenance(psql_db, self.graph_db)
-
+                    self.store_graph_db_class = Store_Provenance(
+                        self.psql_engine, self.graph_db
+                    )
                 if not self.store_prov_db_class:
-                    psql_db = self.psql_engine
-                    self.store_prov_db_class = Store_Lineage(psql_db)
+                    self.store_prov_db_class = Store_Lineage(self.psql_engine)
 
-                self.prev_node = None
                 if cleaned_nb_name not in nb_cell_id_node:
-                    self.prev_node = None
                     nb_cell_id_node[cleaned_nb_name] = {}
 
                 try:
@@ -167,38 +164,40 @@ class JuneauHandler(IPythonHandler):
                         self.prev_node,
                         self.var,
                         self.cell_id,
-                        cleaned_nb_name
+                        cleaned_nb_name,
                     )
                     if self.cell_id not in nb_cell_id_node[cleaned_nb_name]:
                         nb_cell_id_node[cleaned_nb_name][self.cell_id] = self.prev_node
                 except Exception as e:
-                    logging.error(f'Unable to store in graph store due to error {e}')
+                    logging.error(f"Unable to store in graph store due to error {e}")
 
-                self.store_table(
-                    output,
-                    store_table_name,
-                    cleaned_nb_name
-                )
+                self.store_table(output, store_table_name, cleaned_nb_name)
+
             else:
                 logging.error("find variable failed!")
 
-        self.data_trans = {'res': "", 'state': str('true')}
+        self.data_trans = {"res": "", "state": str("true")}
         self.write(json.dumps(self.data_trans))
 
     def post(self):
-        logging.info('Juneau handling search request')
+        logging.info("Juneau handling search request")
         if self.mode == 0:  # return table
-            self.data_trans = {'res': "", 'state': self.var in search_test_class.real_tables}
+            self.data_trans = {
+                "res": "",
+                "state": self.var in search_test_class.real_tables,
+            }
             self.write(json.dumps(self.data_trans))
         else:
             success, output = self.find_variable()
             if success:
-                data_json = search_tables(search_test_class, output, self.mode, self.code, self.var)
-                self.data_trans = {'res': data_json, 'state': data_json != ""}
+                data_json = search_tables(
+                    search_test_class, output, self.mode, self.code, self.var
+                )
+                self.data_trans = {"res": data_json, "state": data_json != ""}
                 self.write(json.dumps(self.data_trans))
             else:
                 logging.error(f"The table was not found: {output}")
-                self.data_trans = {'error': output, 'state': False}
+                self.data_trans = {"error": output, "state": False}
                 self.write(json.dumps(self.data_trans))
 
     def store_table(self, output, store_table_name, var_nb_name):
@@ -219,24 +218,26 @@ class JuneauHandler(IPythonHandler):
 
         try:
             output.to_sql(
-                name=f'rtable{store_table_name}',
+                name=f"rtable{store_table_name}",
                 con=conn,
                 schema=cfg.sql_dbs,
-                if_exists='replace',
-                index=False
+                if_exists="replace",
+                index=False,
             )
-            logging.info('Base table stored')
+            logging.info("Base table stored")
             try:
                 code_list = self.code.split("\\n#\\n")
-                self.store_prov_db_class.InsertTable_Model(store_table_name, self.var, code_list, var_nb_name)
+                self.store_prov_db_class.InsertTable_Model(
+                    store_table_name, self.var, code_list, var_nb_name
+                )
                 INDEXED.add(store_table_name)
             except Exception as e:
                 logging.error(
-                    f'Unable to store provenance of {store_table_name} '
-                    f'due to error {e}'
+                    f"Unable to store provenance of {store_table_name} "
+                    f"due to error {e}"
                 )
             logging.info(f"Returning after indexing {store_table_name}")
         except Exception as e:
-            logging.error(f'Unable to store {store_table_name} due to error {e}')
+            logging.error(f"Unable to store {store_table_name} due to error {e}")
         finally:
             conn.close()
