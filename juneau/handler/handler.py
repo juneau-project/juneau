@@ -227,8 +227,8 @@ class JuneauHandler(IPythonHandler):
             logging.info("Base table stored")
             try:
                 code_list = self.code.split("\\n#\\n")
-                self.store_prov_db_class.InsertTable_Model(
-                    store_table_name, self.var, code_list, var_nb_name
+                self.store_prov_db_class.insert_table_model(
+                    store_table_name, self.var, code_list
                 )
                 INDEXED.add(store_table_name)
             except Exception as e:

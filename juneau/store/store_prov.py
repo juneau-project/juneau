@@ -1,7 +1,24 @@
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+TODO: Explain what this module does.
+"""
+
 import ast
 import json
 import logging
-import sys
 
 import networkx as nx
 import pandas as pd
@@ -14,17 +31,26 @@ special_type = ["np", "pd"]
 
 
 class LineageStorage:
-    conn = None
+    def __init__(self, psql_eng):
+        self.eng = psql_eng
+        self.__connect2db()
+        self.variable = []
+        self.view_cmd = {}
+        self.l2d_cmd = {}
 
     @staticmethod
     def __connect2db():
+        """
+        TODO: Explain what this function does.
+        """
         conn_string = (
             f"host='{config.sql_host}' dbname='{config.sql_dbname}' "
             f"user='{config.sql_name}' password='{config.sql_password}'"
         )
 
         try:
-            # conn.cursor will return a cursor object, you can use this cursor to perform queries
+            # conn.cursor will return a cursor object, you
+            # can use this cursor to perform queries.
             conn = psycopg2.connect(conn_string)
             logging.info("Connection to database successful")
             cursor = conn.cursor()
@@ -48,16 +74,11 @@ class LineageStorage:
         except Exception as e:
             logging.error(f"Connection to database failed due to error {e}")
 
-    def __init__(self, psql_eng):
-
-        self.eng = psql_eng
-        self.__connect2db()
-        self.Variable = []
-        self.view_cmd = {}
-        self.l2d_cmd = {}
-
     @staticmethod
     def __last_line_var(varname, code):
+        """
+        TODO: Explain what this function does.
+        """
         ret = 0
         code = code.split("\n")
         for id, i in enumerate(code):
@@ -73,6 +94,9 @@ class LineageStorage:
 
     @staticmethod
     def __parse_code(code_list):
+        """
+        TODO: Explain what this function does.
+        """
 
         test = FuncLister()
         all_code = ""
@@ -81,7 +105,6 @@ class LineageStorage:
         lid = 1
         fflg = False
         for cid, cell in enumerate(code_list):
-
             if "\\n" in cell:
                 codes = cell.split("\\n")
             elif "\n" in cell:
@@ -122,12 +145,14 @@ class LineageStorage:
 
                 try:
                     ast.parse(code)
-                    if fflg == False:
+                    if not fflg:
                         new_codes.append(code)
                         line2cid[lid] = cid
                         lid = lid + 1
-                except:
-                    logging.info("error with " + code)
+                except Exception as e:
+                    logging.info(
+                        f"Parsing error in code fragment {code} due to error {e}"
+                    )
 
             all_code = all_code + "\n".join(new_codes) + "\n"
 
@@ -141,6 +166,9 @@ class LineageStorage:
         return test.dependency, line2cid, all_code
 
     def generate_graph(self, code_list, nb_name):
+        """
+        TODO: Explain what this function does.
+        """
 
         dependency, line2cid, all_code = self.__parse_code(code_list)
         G = nx.DiGraph()
@@ -186,7 +214,6 @@ class LineageStorage:
                     else:
                         candidate_node = rankbyline[0][0]
 
-                    # print(new_node, candidate_node)
                     if dep in special_type:
                         ename = dep + "." + ename
                         G.add_edge(new_node, candidate_node, label=ename)
@@ -195,26 +222,25 @@ class LineageStorage:
 
         return G, line2cid
 
-    def InsertTable_Model(self, store_name, var_name, code_list, nb_name):
+    def insert_table_model(self, store_name, var_name, code_list):
+        """
+        TODO: Explain what this function does.
+        """
 
         logging.info("Updating provenance...")
-        conn = self.eng.connect()
-        try:
-            dep_db = pd.read_sql_table("dependen", conn, schema=config.sql_graph)
-            l2c_db = pd.read_sql_table("line2cid", conn, schema=config.sql_graph)
-            lid_db = pd.read_sql_table("lastliid", conn, schema=config.sql_graph)
-            var_list = dep_db["view_id"].tolist()
-
-        except:
-            logging.error("reading prov from db failed")
-        finally:
-            conn.close()
+        with self.eng.connect() as conn:
+            try:
+                dep_db = pd.read_sql_table("dependen", conn, schema=config.sql_graph)
+                var_list = dep_db["view_id"].tolist()
+            except Exception as e:
+                logging.error(f"Reading prov from database failed due to error {e}")
 
         try:
             dep, c2i, all_code = self.__parse_code(code_list)
             lid = self.__last_line_var(var_name, all_code)
-        except:
-            logging.error("parse code failed")
+        except Exception as e:
+            logging.error(f"Parse code failed due to error {e}")
+            return
 
         try:
             dep_str = json.dumps(dep)
@@ -226,50 +252,30 @@ class LineageStorage:
             self.view_cmd[store_name] = dep_str
             self.l2d_cmd[store_name] = l2c_str
 
-            encode1 = dep_str  # base64.b64encode(dep)
-            encode2 = l2c_str  # base64.b64encode(c2i)
+            encode1 = dep_str
+            encode2 = l2c_str
 
-            if store_name not in var_list and store_name not in self.Variable:
-
+            if store_name not in var_list and store_name not in self.variable:
                 logging.debug("Inserting values into dependen and line2cid")
-                conn = self.eng.connect()
-                try:
+
+                def insert_value(table_name, encode):
                     conn.execute(
-                        "INSERT INTO "
-                        + config.sql_graph
-                        + ".dependen VALUES ('"
-                        + store_name
-                        + "', '"
-                        + encode1
-                        + "')"
+                        f"INSERT INTO {config.sql_graph}.{table_name} VALUES ('{store_name}', '{encode}')"
                     )
-                    conn.execute(
-                        "INSERT INTO "
-                        + config.sql_graph
-                        + ".line2cid VALUES ('"
-                        + store_name
-                        + "', '"
-                        + encode2
-                        + "')"
-                    )
-                    conn.execute(
-                        "INSERT INTO "
-                        + config.sql_graph
-                        + ".lastliid VALUES ('"
-                        + store_name
-                        + "', '"
-                        + lid_str
-                        + "')"
-                    )
-                    self.Variable.append(store_name)
-                except:
-                    logging.error("Unable to insert into tables")
-                finally:
-                    conn.close()
-        except:
-            logging.error(
-                "Unable to update provenance due to error " + str(sys.exc_info()[0])
-            )
+
+                with self.eng.connect() as conn:
+                    try:
+                        for table, encoded in [
+                            ("dependen", encode1),
+                            ("line2cid", encode2),
+                            ("lastliid", lid_str),
+                        ]:
+                            insert_value(table, encoded)
+                        self.variable.append(store_name)
+                    except Exception as e:
+                        logging.error(f"Unable to insert into tables due to error {e}")
+        except Exception as e:
+            logging.error(f"Unable to update provenance due to error {e}")
 
     def close_dbconnection(self):
         self.eng.close()
