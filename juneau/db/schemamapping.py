@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import timeit
 
-class SchemaMapping:
 
-    def __init__(self, sim_thres = 0.3):
+class SchemaMapping:
+    def __init__(self, sim_thres=0.3):
         self.sim_thres = sim_thres
 
     def jaccard_similarity(self, colA, colB):
@@ -14,9 +14,9 @@ class SchemaMapping:
         colA = np.array(colA)
         union = len(np.union1d(colA, colB))
         inter = len(np.intersect1d(colA, colB))
-        return float(inter)/float(union)
+        return float(inter) / float(union)
 
-    def mapping_naive(self, tableA, tableB, mapped = {}):
+    def mapping_naive(self, tableA, tableB, mapped={}):
 
         start_time = timeit.default_timer()
         time1 = 0
@@ -100,13 +100,15 @@ class SchemaMapping:
             rv = matching[0][2]
 
         end_time = timeit.default_timer()
-        print('raw schema mapping: ', end_time - start_time)
-        print('sim schema mapping: ', time1)
-        print('sim times: ', c1)
+        print("raw schema mapping: ", end_time - start_time)
+        print("sim schema mapping: ", time1)
+        print("sim times: ", c1)
         return Mpair, rv
 
     # Do full schema mapping
-    def mapping_naive_incremental(self, tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped = {}):
+    def mapping_naive_incremental(
+        self, tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped={}
+    ):
 
         start_time = timeit.default_timer()
         time1 = 0
@@ -188,7 +190,7 @@ class SchemaMapping:
                 time1 += e1 - s1
 
                 if sim_col < self.sim_thres:
-                    unmatched[gid][nameA][nameB] = ''
+                    unmatched[gid][nameA][nameB] = ""
 
                 matching.append((nameA, nameB, sim_col))
 
@@ -209,16 +211,17 @@ class SchemaMapping:
 
                 for j in tableB.columns.tolist():
                     if j != Mpair[i]:
-                        unmatched[gid][i][j] = ''
-
+                        unmatched[gid][i][j] = ""
 
         end_time = timeit.default_timer()
         time_total = end_time - start_time
-        #print('full schema mapping: ', time_total)
+        # print('full schema mapping: ', time_total)
         return Mpair, meta_mapping, unmatched, time_total
 
     # Do schema mapping for tables when looking for similar tables
-    def mapping_naive_tables(self, tableA, valid_keys, schema_element, schema_dtype, tflag = False):
+    def mapping_naive_tables(
+        self, tableA, valid_keys, schema_element, schema_dtype, tflag=False
+    ):
 
         start_time = timeit.default_timer()
         time1 = 0
@@ -285,19 +288,31 @@ class SchemaMapping:
                 if matching[i][2] < self.sim_thres:
                     break
                 else:
-                    if matching[i][0] not in Mpair[group] and matching[i][1] not in MpairR[group]:
+                    if (
+                        matching[i][0] not in Mpair[group]
+                        and matching[i][1] not in MpairR[group]
+                    ):
                         Mpair[group][matching[i][0]] = matching[i][1]
                         MpairR[group][matching[i][1]] = matching[i][0]
 
         end_time = timeit.default_timer()
 
         if tflag:
-            print('Schema Mapping Before Search: %s Seconds.'%(end_time - start_time))
+            print("Schema Mapping Before Search: %s Seconds." % (end_time - start_time))
 
         return Mpair
 
     # Do schema mapping for tables when looking for joinable tables
-    def mapping_naive_tables_join(self, tableA, valid_keys, schema_element_sample, schema_element, schema_dtype, unmatched, tflag = False):
+    def mapping_naive_tables_join(
+        self,
+        tableA,
+        valid_keys,
+        schema_element_sample,
+        schema_element,
+        schema_dtype,
+        unmatched,
+        tflag=False,
+    ):
 
         start_time = timeit.default_timer()
         time1 = 0
@@ -360,7 +375,7 @@ class SchemaMapping:
                         print(colB)
 
                     if sim_col < self.sim_thres:
-                        unmatched[group][nameA][nameB] = ''
+                        unmatched[group][nameA][nameB] = ""
 
                     e1 = timeit.default_timer()
                     time1 += e1 - s1
@@ -408,7 +423,7 @@ class SchemaMapping:
                     time1 += e1 - s1
 
                     if sim_col < self.sim_thres:
-                        unmatched[group][nameA][nameB] = ''
+                        unmatched[group][nameA][nameB] = ""
 
                     matching.append((nameA, nameB, sim_col))
 
@@ -418,16 +433,18 @@ class SchemaMapping:
                 if matching[i][2] < self.sim_thres:
                     break
                 else:
-                    if matching[i][0] not in Mpair[group] and matching[i][1] not in MpairR[group]:
+                    if (
+                        matching[i][0] not in Mpair[group]
+                        and matching[i][1] not in MpairR[group]
+                    ):
                         Mpair[group][matching[i][0]] = matching[i][1]
                         MpairR[group][matching[i][1]] = matching[i][0]
-
 
         end_time = timeit.default_timer()
 
         if tflag:
-            print('raw schema mapping: ', end_time - start_time)
-            print('sim schema mapping: ', time1)
+            print("raw schema mapping: ", end_time - start_time)
+            print("sim schema mapping: ", time1)
 
         return Mpair, unmatched
 
@@ -463,9 +480,9 @@ class SchemaMapping:
                 if nameA not in acol_set:
                     acol_set[nameA] = list(set(colA))
 
-                #try:
+                # try:
                 #    colA = colA[~np.isnan(colA)]
-                #except:
+                # except:
                 #    try:
                 #        colA = colA[colA != np.array(None)]
                 #    except:
@@ -489,7 +506,7 @@ class SchemaMapping:
                     sim_col = self.jaccard_similarity(acol_set[nameA], colB)
                     e1 = timeit.default_timer()
                     time1 += e1 - s1
-                    #c1 += 1
+                    # c1 += 1
                     matching.append((nameA, nameB, sim_col))
 
             matching = sorted(matching, key=lambda d: d[2], reverse=True)
@@ -505,4 +522,3 @@ class SchemaMapping:
         end_time = timeit.default_timer()
 
         return group_list
-

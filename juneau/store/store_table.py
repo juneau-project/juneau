@@ -13,16 +13,28 @@ import logging
 
 
 class Store_Seperately:
-
     def __connect2db(self):
-        engine = create_engine("postgresql://" + cfg.sql_name + ":" +
-                               cfg.sql_password + "@localhost/" + self.dbname)
+        engine = create_engine(
+            "postgresql://"
+            + cfg.sql_name
+            + ":"
+            + cfg.sql_password
+            + "@localhost/"
+            + self.dbname
+        )
         return engine.connect()
 
     def __connect2db_init(self):
         # Define our connection string
-        conn_string = "host='localhost' dbname=\'" + self.dbname + "\' user=\'" + cfg.sql_name + \
-                      "\' password=\'" + cfg.sql_password + "\'"
+        conn_string = (
+            "host='localhost' dbname='"
+            + self.dbname
+            + "' user='"
+            + cfg.sql_name
+            + "' password='"
+            + cfg.sql_password
+            + "'"
+        )
 
         # logging.info the connection string we will use to connect
         logging.info("Connecting to database\n	->%s" % (conn_string))
@@ -69,7 +81,13 @@ class Store_Seperately:
         if self.time_flag == True:
             start_time = timeit.default_timer()
 
-        new_table.to_sql(name='rtable' + str(idi), con=self.eng, schema='rowstore', if_exists='fail', index=False)
+        new_table.to_sql(
+            name="rtable" + str(idi),
+            con=self.eng,
+            schema="rowstore",
+            if_exists="fail",
+            index=False,
+        )
         self.Variable.append(idi)
 
         if self.time_flag == True:
@@ -77,8 +95,15 @@ class Store_Seperately:
             logging.info(end_time - start_time)
 
     def Query_Tables_Times(self, vid):
-        eng = psycopg2.connect("dbname=" + self.dbname + " user=\'" +
-                               cfg.sql_name + "\' password=\'" + cfg.sql_password + "\'")
+        eng = psycopg2.connect(
+            "dbname="
+            + self.dbname
+            + " user='"
+            + cfg.sql_name
+            + "' password='"
+            + cfg.sql_password
+            + "'"
+        )
         cur = eng.cursor(cursor_factory=PreparingCursor)
         time_total = []
         for var in self.Variable:
@@ -100,11 +125,12 @@ class Store_Seperately:
     def Query_Storage_Size(self):
         eng = self.__connect2db()
         mediate_tables = eng.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = \'rowstore\';")
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'rowstore';"
+        )
         table_name = []
         storage_number = []
         for row in mediate_tables:
-            table_name.append(('rowstore', row[0]))
+            table_name.append(("rowstore", row[0]))
         for sch, tn in table_name:
             try:
                 table = pd.read_sql_table(tn, eng, schema=sch)
@@ -123,18 +149,30 @@ class Store_Seperately:
         self.eng = self.__connect2db()
         nflg = True
         try:
-            old_table = pd.read_sql_table('rtable' + str(idi), self.eng, schema='rowstore')
+            old_table = pd.read_sql_table(
+                "rtable" + str(idi), self.eng, schema="rowstore"
+            )
         except:
             old_table = None
             nflg = False
 
         if nflg == False:
-            new_table.to_sql(name='rtable' + str(idi) + '_' + str(vid), con=self.eng, index=False, schema='rowstore',
-                             if_exists='replace')
+            new_table.to_sql(
+                name="rtable" + str(idi) + "_" + str(vid),
+                con=self.eng,
+                index=False,
+                schema="rowstore",
+                if_exists="replace",
+            )
         else:
             if new_table.equals(old_table) == False:
-                new_table.to_sql(name='rtable' + str(idi) + '_' + str(vid), con=self.eng, index=False,
-                                 schema='rowstore', if_exists='replace')
+                new_table.to_sql(
+                    name="rtable" + str(idi) + "_" + str(vid),
+                    con=self.eng,
+                    index=False,
+                    schema="rowstore",
+                    if_exists="replace",
+                )
         end_time = timeit.default_timer()
         self.update_time = self.update_time + end_time - start_time
         self.eng.close()

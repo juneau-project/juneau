@@ -24,7 +24,7 @@ from juneau.jupyter import jupyter
 from juneau.search.search import search_tables
 from juneau.search.search_withprov_opt import WithProv_Optimized
 from juneau.store.store_graph import ProvenanceStorage
-from juneau.store.store_prov import Store_Lineage
+from juneau.store.store_prov import LineageStorage
 from juneau.utils.utils import clean_notebook_name
 
 INDEXED = set()
@@ -149,7 +149,7 @@ class JuneauHandler(IPythonHandler):
                         self.psql_engine, self.graph_db
                     )
                 if not self.store_prov_db_class:
-                    self.store_prov_db_class = Store_Lineage(self.psql_engine)
+                    self.store_prov_db_class = LineageStorage(self.psql_engine)
 
                 if cleaned_nb_name not in nb_cell_id_node:
                     nb_cell_id_node[cleaned_nb_name] = {}

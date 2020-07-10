@@ -30,7 +30,7 @@ def clean_notebook_name(nb_name):
     Returns:
         A string that is cleaned per the requirements above.
     """
-    nb_name = nb_name.replace('.ipynb', '').replace('-', '').replace('_', '')
+    nb_name = nb_name.replace(".ipynb", "").replace("-", "").replace("_", "")
     nb_name = nb_name.split("/")
     if len(nb_name) > 2:
         nb_name = nb_name[-2:]

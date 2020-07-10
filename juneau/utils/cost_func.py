@@ -61,7 +61,12 @@ def evaluate_key(vta, vtb, vint, tableA, tableB):
     for v in vtb:
         size_intb = size_intb + len(v)
 
-    lower_bound = float(sizeab) - float(sizea * scoreb) - float(sizeb * scorea) + float(selectB * scorea * size_intb)
+    lower_bound = (
+        float(sizeab)
+        - float(sizea * scoreb)
+        - float(sizeb * scorea)
+        + float(selectB * scorea * size_intb)
+    )
     return lower_bound
 
 
@@ -80,16 +85,16 @@ def return_jkpair4tables(tableA, tableB):
         if tableA.shape[0] > SAMPLE_SIZE:
             colA = tableA[tableA.columns.values.tolist()[i]].sample(SAMPLE_SIZE).values
 
-        nameA = tableA.columns.values.tolist()[i].split('_')[0].lower()
+        nameA = tableA.columns.values.tolist()[i].split("_")[0].lower()
 
-        if 'index' in nameA:
+        if "index" in nameA:
             continue
 
         for j in range(shmbl):
 
-            nameB = tableB.columns.values.tolist()[j].split('_')[0].lower()
+            nameB = tableB.columns.values.tolist()[j].split("_")[0].lower()
 
-            if 'index' in nameB:
+            if "index" in nameB:
                 continue
 
             if SequenceMatcher(None, nameA, nameB).ratio() < 0.5:
@@ -98,14 +103,18 @@ def return_jkpair4tables(tableA, tableB):
             colB = tableB[tableB.columns.values.tolist()[j]].fillna(0).values
 
             if tableB.shape[0] > SAMPLE_SIZE:
-                colB = tableB[tableB.columns.values.tolist()[j]].sample(SAMPLE_SIZE).values
+                colB = (
+                    tableB[tableB.columns.values.tolist()[j]].sample(SAMPLE_SIZE).values
+                )
 
             interAB = np.intersect1d(colA, colB)
 
             if min(len(colA), len(colB)) == 0:
                 matching.append((i, j, float(0)))
             else:
-                score_match = float(len(interAB)) / float(min(len(set(colA)), len(set(colB))))
+                score_match = float(len(interAB)) / float(
+                    min(len(set(colA)), len(set(colB)))
+                )
                 matching.append((i, j, score_match))
 
     matching = sorted(matching, key=lambda d: d[2], reverse=True)
@@ -114,13 +123,19 @@ def return_jkpair4tables(tableA, tableB):
         if matching[i][2] < 0.5:
             break
         else:
-            if tableA.columns.values.tolist()[matching[i][0]] not in Mpair and \
-                    tableB.columns.values.tolist()[matching[i][1]] not in MpairR:
-                Mpair[tableA.columns.values.tolist()[matching[i][0]]] = tableB.columns.values.tolist()[matching[i][1]]
-                MpairR[tableB.columns.values.tolist()[matching[i][1]]] = tableA.columns.values.tolist()[matching[i][0]]
+            if (
+                tableA.columns.values.tolist()[matching[i][0]] not in Mpair
+                and tableB.columns.values.tolist()[matching[i][1]] not in MpairR
+            ):
+                Mpair[
+                    tableA.columns.values.tolist()[matching[i][0]]
+                ] = tableB.columns.values.tolist()[matching[i][1]]
+                MpairR[
+                    tableB.columns.values.tolist()[matching[i][1]]
+                ] = tableA.columns.values.tolist()[matching[i][0]]
 
-    vta = [','.join(map(str, itm)) for itm in tableA[Mpair.keys()].values]
-    vtb = [','.join(map(str, itm)) for itm in tableB[Mpair.values()].values]
+    vta = [",".join(map(str, itm)) for itm in tableA[Mpair.keys()].values]
+    vtb = [",".join(map(str, itm)) for itm in tableB[Mpair.values()].values]
     vint = [t for t in vta if t in vtb]
 
     if min(len(vta), len(vtb)) == 0:
@@ -137,20 +152,20 @@ def return_union_row(tableA, tableB):
     tva = tableA.columns.values.tolist()
     index_flg = True
     for i in tva:
-        if 'index' in i:
+        if "index" in i:
             index_flg = False
             break
 
     for idx, row in tableA.iterrows():
         if not index_flg:
-            row_str = ','.join(map(str, row.values.tolist()[1:]))
+            row_str = ",".join(map(str, row.values.tolist()[1:]))
         else:
-            row_str = ','.join(map(str, row.values.tolist()))
+            row_str = ",".join(map(str, row.values.tolist()))
 
         tableA_strA.append(row_str)
     tableB_strB = []
     for idx, row in tableB.iterrows():
-        row_str = ','.join(map(str, row.values.tolist()))
+        row_str = ",".join(map(str, row.values.tolist()))
         tableB_strB.append(row_str)
 
     lenA = len(tableA_strA)
@@ -186,7 +201,7 @@ def Pickup_BestTable(tablestorage, tableA, cost_flag):
         return None
 
     rank_table_to_merge = []
-    tablestorage = sorted(tablestorage.items(), key=lambda d: int(d[0].split('_')[0]))
+    tablestorage = sorted(tablestorage.items(), key=lambda d: int(d[0].split("_")[0]))
     tablestorage2 = []
     tablename = []
     for idt, table_in in tablestorage:
@@ -202,13 +217,30 @@ def Pickup_BestTable(tablestorage, tableA, cost_flag):
     rank_table_to_merge = sorted(rank_table_to_merge, key=lambda d: d[2], reverse=True)
 
     if cost_flag:
-        return tablename[rank_table_to_merge[0][0]], rank_table_to_merge[0][1], rank_table_to_merge[0][2]
+        return (
+            tablename[rank_table_to_merge[0][0]],
+            rank_table_to_merge[0][1],
+            rank_table_to_merge[0][2],
+        )
     else:
-        basetablestore = min([100, sum(tableA.count()), sum(tablestorage[rank_table_to_merge[0][0]].count())])
-        if len(rank_table_to_merge[0][1]) == 0 or rank_table_to_merge[0][2] < basetablestore:
+        basetablestore = min(
+            [
+                100,
+                sum(tableA.count()),
+                sum(tablestorage[rank_table_to_merge[0][0]].count()),
+            ]
+        )
+        if (
+            len(rank_table_to_merge[0][1]) == 0
+            or rank_table_to_merge[0][2] < basetablestore
+        ):
             return None
         else:
-            return tablename[rank_table_to_merge[0][0]], rank_table_to_merge[0][1], rank_table_to_merge[0][2]
+            return (
+                tablename[rank_table_to_merge[0][0]],
+                rank_table_to_merge[0][1],
+                rank_table_to_merge[0][2],
+            )
 
 
 def Pickup_BestTable_UnionRow(tablestorage, tableA):
@@ -290,9 +322,13 @@ def cost_func_store_with_union_row(table, table_df_full):
     table_id, storage_benefit = Pickup_BestTable_UnionRow(table_df_full, table)
     query_time = 0.01 * float(table.shape[0])
     if storage_benefit > 0:
-        storage_cost = compute_table_size(table) - abs(storage_benefit) + 4 * table.shape[0]
+        storage_cost = (
+            compute_table_size(table) - abs(storage_benefit) + 4 * table.shape[0]
+        )
     else:
-        storage_cost = compute_table_size(table) - abs(storage_benefit) + 4 * table.shape[0]
+        storage_cost = (
+            compute_table_size(table) - abs(storage_benefit) + 4 * table.shape[0]
+        )
 
     if storage_cost < 0 and table_id is not None:
         logging.info(str(compute_table_size(table)))
@@ -300,8 +336,11 @@ def cost_func_store_with_union_row(table, table_df_full):
         logging.info(table)
         logging.info(str(table_df_full[table_id]))
 
-    return query_time * float(1 - TUNING_PARAM) + float(
-        storage_cost) * TUNING_PARAM, table_id, storage_benefit,
+    return (
+        query_time * float(1 - TUNING_PARAM) + float(storage_cost) * TUNING_PARAM,
+        table_id,
+        storage_benefit,
+    )
 
 
 def cost_func_store_seperately(table):
@@ -320,14 +359,24 @@ def cost_func_store_with_join_row(table, table_df_full):
     table_id, join_key, storage_benefit = Pickup_BestTable(table_df_full, table, True)
     query_time = 0.01 * float(table.shape[0])
     storage_cost = compute_table_size(table) - storage_benefit + 4 * table.shape[0]
-    return query_time * float(1 - TUNING_PARAM) + float(storage_cost) * TUNING_PARAM, table_id, join_key
+    return (
+        query_time * float(1 - TUNING_PARAM) + float(storage_cost) * TUNING_PARAM,
+        table_id,
+        join_key,
+    )
 
 
 def cost_func_store_with_join_col(table, table_df_full):
     table_id, join_key, storage_benefit = Pickup_BestTable(table_df_full, table, True)
     query_time = 0.01 * float(sum(table.count()))
-    storage_cost = float(sum(table.count()) * 4) + compute_table_size_unique_each_col(table)
-    return query_time * float(1 - TUNING_PARAM) + float(storage_cost), table_id, join_key
+    storage_cost = float(sum(table.count()) * 4) + compute_table_size_unique_each_col(
+        table
+    )
+    return (
+        query_time * float(1 - TUNING_PARAM) + float(storage_cost),
+        table_id,
+        join_key,
+    )
 
 
 def choose_storage_strategy(table, table_df_full, table_view_full, running_time, code):

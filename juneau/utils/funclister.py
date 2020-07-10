@@ -31,7 +31,7 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_Attribute(self, node):
         return_node = []
-        if 'id' in node.value.__dict__:
+        if "id" in node.value.__dict__:
             return_node.append((node.value.id, node.attr))
         else:
             ret = self.visit(node.value)
@@ -42,8 +42,8 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_Index(self, node):
         return_node = []
-        if 'id' in node.value.__dict__:
-            return_node.append((node.value.id, 'Index'))
+        if "id" in node.value.__dict__:
+            return_node.append((node.value.id, "Index"))
         else:
             ret = self.visit(node.value)
             if ret:
@@ -54,8 +54,8 @@ class FuncLister(ast.NodeVisitor):
 
         return_node = []
 
-        if 'id' in node.value.__dict__:
-            return_node.append((node.value.id, 'Index'))
+        if "id" in node.value.__dict__:
+            return_node.append((node.value.id, "Index"))
         else:
             ret = self.visit(node.value)
             if ret:
@@ -69,7 +69,7 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_UnaryOp(self, node):
         return_node = []
-        if 'id' in node.operand.__dict__:
+        if "id" in node.operand.__dict__:
             return_node.append((node.operand.id, str(node.op)))
         else:
             ret = self.visit(node.operand)
@@ -80,14 +80,14 @@ class FuncLister(ast.NodeVisitor):
     def visit_BinOp(self, node):
 
         return_node = []
-        if 'id' in node.left.__dict__:
+        if "id" in node.left.__dict__:
             return_node.append((node.left.id, str(node.op)))
         else:
             ret = self.visit(node.left)
             if ret is not None:
                 return_node = return_node + ret
 
-        if 'id' in node.right.__dict__:
+        if "id" in node.right.__dict__:
             return_node.append((node.right.id, str(node.op)))
         else:
             ret = self.visit(node.right)
@@ -99,7 +99,7 @@ class FuncLister(ast.NodeVisitor):
     def visit_BoolOp(self, node):
         return_node = []
         for nv in node.values:
-            if 'id' in nv.__dict__:
+            if "id" in nv.__dict__:
                 return_node.append((nv.id, str(node.op)))
             else:
                 ret = self.visit(nv)
@@ -110,7 +110,7 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_Compare(self, node):
         return_node = []
-        if 'id' in node.left.__dict__:
+        if "id" in node.left.__dict__:
             return_node.append((node.left.id, str(node.ops)))
         else:
             ret = self.visit(node.left)
@@ -118,7 +118,7 @@ class FuncLister(ast.NodeVisitor):
                 return_node = return_node + ret
 
         for nc in node.comparators:
-            if 'id' in nc.__dict__:
+            if "id" in nc.__dict__:
                 return_node.append((nc.id, str(node.ops)))
             else:
                 ret = self.visit(nc)
@@ -128,10 +128,10 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_List(self, node):
         return_node = []
-        if 'elts' in node.__dict__:
+        if "elts" in node.__dict__:
             for ele in node.elts:
-                if 'id' in ele.__dict__:
-                    return_node.append((ele.id, 'List'))
+                if "id" in ele.__dict__:
+                    return_node.append((ele.id, "List"))
                 else:
                     ret = self.visit(ele)
                     if ret is not None:
@@ -140,10 +140,10 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_Tuple(self, node):
         return_node = []
-        if 'elts' in node.__dict__:
+        if "elts" in node.__dict__:
             for ele in node.elts:
-                if 'id' in ele.__dict__:
-                    return_node.append((ele.id, 'Tuple'))
+                if "id" in ele.__dict__:
+                    return_node.append((ele.id, "Tuple"))
                 else:
                     ret = self.visit(ele)
                     if ret is not None:
@@ -159,13 +159,13 @@ class FuncLister(ast.NodeVisitor):
             return_node = return_node + ret
 
         for na in node.args:
-            if 'id' in na.__dict__:
-                if 'id' in node.func.__dict__:
+            if "id" in na.__dict__:
+                if "id" in node.func.__dict__:
                     return_node.append((na.id, node.func.id))
                 else:
                     return_node.append((na.id, node.func.attr))
             else:
-                if 'id' in node.func.__dict__:
+                if "id" in node.func.__dict__:
                     fname = node.func.id
                 else:
                     fname = node.func.attr
@@ -176,14 +176,14 @@ class FuncLister(ast.NodeVisitor):
                         return_node.append((ri, fname))
 
         for nk in node.keywords:
-            if 'value' in nk.__dict__:
-                if 'id' in nk.value.__dict__:
-                    if 'id' in node.func.__dict__:
+            if "value" in nk.__dict__:
+                if "id" in nk.value.__dict__:
+                    if "id" in node.func.__dict__:
                         return_node.append((nk.value.id, node.func.id))
                     else:
                         return_node.append((nk.value.id, node.func.attr))
                 else:
-                    if 'id' in node.func.__dict__:
+                    if "id" in node.func.__dict__:
                         fname = node.func.id
                     else:
                         fname = node.func.attr
@@ -197,7 +197,7 @@ class FuncLister(ast.NodeVisitor):
     def visit_Assign(self, node):
         left_array = []
         for nd in node.targets:
-            if 'id' in nd.__dict__:
+            if "id" in nd.__dict__:
                 left_array.append(nd.id)
             else:
                 ret = self.visit(nd)
@@ -205,8 +205,8 @@ class FuncLister(ast.NodeVisitor):
                     left_array = left_array + ret
 
         right_array = []
-        if 'id' in node.value.__dict__:
-            right_array.append((node.value.id, 'Assign'))
+        if "id" in node.value.__dict__:
+            right_array.append((node.value.id, "Assign"))
         else:
             ret = self.visit(node.value)
             if ret is not None:

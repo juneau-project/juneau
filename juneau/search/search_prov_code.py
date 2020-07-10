@@ -4,7 +4,6 @@ import queue
 
 
 class SearchProv:
-
     def __star_dis(self, listA, listB):
         listA = sorted(listA)
         listB = sorted(listB)
@@ -66,27 +65,27 @@ class SearchProv:
         node_list = {}
         q = queue.Queue()
         q.put(qnode)
-        while (not q.empty()):
+        while not q.empty():
             temp_node = q.get()
             if temp_node not in node_list:
                 node_list[temp_node] = {}
             predecessors = graph.successors(temp_node)
             for n in predecessors:
                 q.put(n)
-                node_list[temp_node][n] = '+' + graph[temp_node][n]['label']
+                node_list[temp_node][n] = "+" + graph[temp_node][n]["label"]
                 successors = graph.predecessors(n)
                 for s in successors:
                     if s in node_list:
                         if n not in node_list:
                             node_list[n] = {}
-                        node_list[n][s] = '-' + graph[s][n]['label']
+                        node_list[n][s] = "-" + graph[s][n]["label"]
         return node_list
 
     def __get_all_node_dependencies(self):
         gnodes_subgraph = {}
         for g in self.Graphs.keys():
             graph = self.Graphs[g]
-            if graph and 'nodes' in graph:
+            if graph and "nodes" in graph:
                 gnodes_subgraph[g] = {}
                 gnodes = list(graph.nodes)
                 for n in gnodes:

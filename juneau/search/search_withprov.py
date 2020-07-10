@@ -8,7 +8,7 @@ from juneau.search.search_tables import SearchTables
 
 import logging
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 
 class WithProv(SearchTables):
@@ -54,7 +54,7 @@ class WithProv(SearchTables):
             self.schema_element_count[idi] = {}
 
             for j in i:
-                tname = 'rtable' + j
+                tname = "rtable" + j
                 if tname not in self.real_tables:
                     continue
                 for col in self.real_tables[tname].columns:
@@ -65,19 +65,27 @@ class WithProv(SearchTables):
                             sid = max(list(self.schema_linking[idi].values())) + 1
 
                         self.schema_linking[idi][col] = sid
-                        self.schema_element_dtype[idi][col] = self.real_tables[tname][col].dtype
+                        self.schema_element_dtype[idi][col] = self.real_tables[tname][
+                            col
+                        ].dtype
                         self.schema_element_count[idi][col] = 1
                         self.schema_element[idi][col] = []
                         self.schema_element[idi][col] += self.real_tables[tname][col][
-                            self.real_tables[tname][col].notnull()].tolist()
-                        self.schema_element[idi][col] = list(set(self.schema_element[idi][col]))
+                            self.real_tables[tname][col].notnull()
+                        ].tolist()
+                        self.schema_element[idi][col] = list(
+                            set(self.schema_element[idi][col])
+                        )
                     else:
                         self.schema_element[idi][col] += self.real_tables[tname][col][
-                            self.real_tables[tname][col].notnull()].tolist()
-                        self.schema_element[idi][col] = list(set(self.schema_element[idi][col]))
+                            self.real_tables[tname][col].notnull()
+                        ].tolist()
+                        self.schema_element[idi][col] = list(
+                            set(self.schema_element[idi][col])
+                        )
                         self.schema_element_count[idi][col] += 1
 
-        logging.info('There are %s groups of tables.' % len(tables_connected))
+        logging.info("There are %s groups of tables." % len(tables_connected))
 
     def sketch_meta_mapping(self, sz=10):
         self.schema_element_sample = {}
@@ -91,10 +99,12 @@ class WithProv(SearchTables):
                 for sc in self.schema_element[i].keys():
                     if sc == "Unnamed: 0" or "index" in sc:
                         continue
-                    if (self.schema_element_dtype[i][sc] is np.dtype(float)):
+                    if self.schema_element_dtype[i][sc] is np.dtype(float):
                         continue
                     sc_value = list(self.schema_element[i][sc])
-                    sc_choice.append((sc, float(len(set(sc_value))) / float(len(sc_value))))
+                    sc_choice.append(
+                        (sc, float(len(set(sc_value))) / float(len(sc_value)))
+                    )
                 sc_choice = sorted(sc_choice, key=lambda d: d[1], reverse=True)
 
                 count = 0
@@ -133,14 +143,14 @@ class WithProv(SearchTables):
 
         self.index()
 
-        logging.info('Data Search Extension Started!')
+        logging.info("Data Search Extension Started!")
 
     def index(self):
         self.sketch_meta_mapping()
         try:
-            self.n_l2cid = self.line2cid('~/similar_table_lcid')
+            self.n_l2cid = self.line2cid("~/similar_table_lcid")
         except FileNotFoundError:
-            logging.info('Unable to find list of similar table LCIDs')
+            logging.info("Unable to find list of similar table LCIDs")
 
     def schema_mapping(self, tableA, tableB, meta_mapping, gid):
         s_mapping = {}
@@ -152,7 +162,10 @@ class WithProv(SearchTables):
 
         for i in tableB.columns.tolist():
             if self.schema_linking[gid][i] in t_mapping:
-                if tableB[i].dtype != tableA[t_mapping[self.schema_linking[gid][i]]].dtype:
+                if (
+                    tableB[i].dtype
+                    != tableA[t_mapping[self.schema_linking[gid][i]]].dtype
+                ):
                     continue
                 s_mapping[t_mapping[self.schema_linking[gid][i]]] = i
 
@@ -169,19 +182,25 @@ class WithProv(SearchTables):
         return s_mapping, mv
 
     # search_similar_tables(query, beta, k, 0.9, 0.2, True)
-    def search_similar_tables(self, query, beta, k, thres_key_cache, thres_key_prune, tflag=False):
+    def search_similar_tables(
+        self, query, beta, k, thres_key_cache, thres_key_prune, tflag=False
+    ):
 
         self.query = query
 
         topk_tables = []
         SM_test = SchemaMapping()
-        groups_possibly_matched = SM_test.mapping_naive_groups(self.query, self.schema_element_sample)
+        groups_possibly_matched = SM_test.mapping_naive_groups(
+            self.query, self.schema_element_sample
+        )
         self.query_fd = {}
 
         start_time1 = timeit.default_timer()
         time1 = 0
         start_time = timeit.default_timer()
-        meta_mapping = SM_test.mapping_naive_tables(self.query, self.schema_element, groups_possibly_matched)
+        meta_mapping = SM_test.mapping_naive_tables(
+            self.query, self.schema_element, groups_possibly_matched
+        )
         end_time = timeit.default_timer()
         time1 += end_time - start_time
 
@@ -196,7 +215,9 @@ class WithProv(SearchTables):
                 continue
 
             start_time = timeit.default_timer()
-            SM = self.schema_mapping(self.query, self.real_tables[i], meta_mapping, gid, False)
+            SM = self.schema_mapping(
+                self.query, self.real_tables[i], meta_mapping, gid, False
+            )
             end_time = timeit.default_timer()
             time2 += end_time - start_time
 
@@ -204,8 +225,15 @@ class WithProv(SearchTables):
                 continue
 
             start_time = timeit.default_timer()
-            table_sim = self.comp_table_similarity(self.query, self.real_tables[i], beta, SM, gid, thres_key_prune,
-                                                   thres_key_cache)
+            table_sim = self.comp_table_similarity(
+                self.query,
+                self.real_tables[i],
+                beta,
+                SM,
+                gid,
+                thres_key_prune,
+                thres_key_cache,
+            )
             end_time = timeit.default_timer()
             time3 += end_time - start_time
             topk_tables.append((i, table_sim))
@@ -220,9 +248,9 @@ class WithProv(SearchTables):
         rtables_names = self.remove_dup(topk_tables, k)
 
         if tflag == True:
-            print('Schema Mapping Cost: ', time1 + time2)
-            print('Similarity Computation Cost: ', time3)
-            print('Totally Cost: ', time4)
+            print("Schema Mapping Cost: ", time1 + time2)
+            print("Similarity Computation Cost: ", time3)
+            print("Totally Cost: ", time4)
 
         rtables = []
         for i in rtables_names:
@@ -230,7 +258,9 @@ class WithProv(SearchTables):
 
         return rtables
 
-    def search_similar_tables_threshold1(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag=False):
+    def search_similar_tables_threshold1(
+        self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag=False
+    ):
 
         self.query = query
         query_col = self.sketch_query_cols(query)
@@ -240,13 +270,17 @@ class WithProv(SearchTables):
             self.already_map[i] = {}
 
         SM_test = SchemaMapping()
-        groups_possibly_matched = SM_test.mapping_naive_groups(self.query, self.schema_element_sample)
+        groups_possibly_matched = SM_test.mapping_naive_groups(
+            self.query, self.schema_element_sample
+        )
         self.query_fd = {}
 
         start_time1 = timeit.default_timer()
         time1 = 0
         start_time = timeit.default_timer()
-        meta_mapping = SM_test.mapping_naive_tables(self.query, query_col, self.schema_element, groups_possibly_matched)
+        meta_mapping = SM_test.mapping_naive_tables(
+            self.query, query_col, self.schema_element, groups_possibly_matched
+        )
         end_time = timeit.default_timer()
         time1 += end_time - start_time
 
@@ -281,8 +315,12 @@ class WithProv(SearchTables):
                 if sk not in SM:
                     tableSnotintableR.append(sk)
 
-            vname_score = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
-            vname_score2 = float(len(SM.keys()) - 1) / float(len(tableR.columns.values) + len(tableSnotintableR) - 1)
+            vname_score = float(1) / float(
+                len(tableR.columns.values) + len(tableSnotintableR)
+            )
+            vname_score2 = float(len(SM.keys()) - 1) / float(
+                len(tableR.columns.values) + len(tableSnotintableR) - 1
+            )
             ubound = beta * vname_score2 + float(1 - beta) * Cache_MaxSim[tname]
 
             rank2.append(ubound)
@@ -303,16 +341,27 @@ class WithProv(SearchTables):
             tableR = self.real_tables[rank_candidate[i][0]]
             SM = rank_candidate[i][2]
             gid = self.table_group[rank_candidate[i][0][6:]]
-            top_tables.append((rank_candidate[i][0],
-                               self.comp_table_similarity(self.query, tableR, beta, SM, gid, thres_key_prune,
-                                                          thres_key_cache)))
+            top_tables.append(
+                (
+                    rank_candidate[i][0],
+                    self.comp_table_similarity(
+                        self.query,
+                        tableR,
+                        beta,
+                        SM,
+                        gid,
+                        thres_key_prune,
+                        thres_key_cache,
+                    ),
+                )
+            )
 
         top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
         min_value = top_tables[-1][1]
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
             if ks + id >= len(rank_candidate):
                 break
 
@@ -328,8 +377,9 @@ class WithProv(SearchTables):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 SM = rank_candidate[ks + id][2]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
-                new_score = self.comp_table_similarity(self.query, tableR, beta, SM, gid, thres_key_cache,
-                                                       thres_key_cache)
+                new_score = self.comp_table_similarity(
+                    self.query, tableR, beta, SM, gid, thres_key_cache, thres_key_cache
+                )
                 if new_score <= min_value:
                     continue
                 else:
@@ -341,8 +391,8 @@ class WithProv(SearchTables):
         time3 = end_time1 - start_time1
 
         if tflag == True:
-            print('Schema Mapping Cost: ', time1)
-            print('Totally Cost: ', time3)
+            print("Schema Mapping Cost: ", time1)
+            print("Totally Cost: ", time3)
 
         rtables_names = self.remove_dup(top_tables, ks)
 
@@ -352,7 +402,9 @@ class WithProv(SearchTables):
 
         return rtables
 
-    def search_similar_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag=False):
+    def search_similar_tables_threshold2(
+        self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag=False
+    ):
 
         self.query = query
 
@@ -374,8 +426,9 @@ class WithProv(SearchTables):
         time1 = 0
         start_time = timeit.default_timer()
         # Do mapping
-        meta_mapping = SM_test.mapping_naive_tables(self.query, query_col, self.schema_element_sample, \
-                                                    self.schema_element_dtype)
+        meta_mapping = SM_test.mapping_naive_tables(
+            self.query, query_col, self.schema_element_sample, self.schema_element_dtype
+        )
 
         end_time = timeit.default_timer()
         time1 += end_time - start_time
@@ -422,10 +475,13 @@ class WithProv(SearchTables):
                 if sk not in SM:
                     tableSnotintableR.append(sk)
 
-            vname_score = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
+            vname_score = float(1) / float(
+                len(tableR.columns.values) + len(tableSnotintableR)
+            )
 
-            vname_score2 = float(min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1) \
-                           / float(len(tableR.columns.values) + len(tableSnotintableR) - 1)
+            vname_score2 = float(
+                min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1
+            ) / float(len(tableR.columns.values) + len(tableSnotintableR) - 1)
 
             ubound = beta * vname_score2 + float(1 - beta) * Cache_MaxSim[tname]
 
@@ -447,13 +503,25 @@ class WithProv(SearchTables):
             tableR = self.real_tables[rank_candidate[i][0]]
             gid = self.table_group[rank_candidate[i][0][6:]]
             SM_real = rank_candidate[i][2]
-            score, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test, self.query,
-                                                                                                 tableR, beta, SM_real,
-                                                                                                 gid, meta_mapping,
-                                                                                                 self.schema_linking,
-                                                                                                 thres_key_prune,
-                                                                                                 thres_key_cache,
-                                                                                                 unmatched)
+            (
+                score,
+                meta_mapping,
+                unmatched,
+                sm_time,
+                key_chosen,
+            ) = self.comp_table_similarity_key(
+                SM_test,
+                self.query,
+                tableR,
+                beta,
+                SM_real,
+                gid,
+                meta_mapping,
+                self.schema_linking,
+                thres_key_prune,
+                thres_key_cache,
+                unmatched,
+            )
             top_tables.append((rank_candidate[i][0], score, key_chosen))
             time1 += sm_time
 
@@ -462,7 +530,7 @@ class WithProv(SearchTables):
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
             if ks + id >= len(rank_candidate):
                 break
 
@@ -478,21 +546,34 @@ class WithProv(SearchTables):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
                 SM_real = rank_candidate[ks + id][2]
-                rs, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test, self.query,
-                                                                                                  tableR, beta, SM_real,
-                                                                                                  gid,
-                                                                                                  meta_mapping,
-                                                                                                  self.schema_linking,
-                                                                                                  thres_key_prune,
-                                                                                                  thres_key_cache,
-                                                                                                  unmatched)
+                (
+                    rs,
+                    meta_mapping,
+                    unmatched,
+                    sm_time,
+                    key_chosen,
+                ) = self.comp_table_similarity_key(
+                    SM_test,
+                    self.query,
+                    tableR,
+                    beta,
+                    SM_real,
+                    gid,
+                    meta_mapping,
+                    self.schema_linking,
+                    thres_key_prune,
+                    thres_key_cache,
+                    unmatched,
+                )
                 time1 += sm_time
                 new_score = rs
 
                 if new_score <= min_value:
                     continue
                 else:
-                    top_tables.append((rank_candidate[ks + id][0], new_score, key_chosen))
+                    top_tables.append(
+                        (rank_candidate[ks + id][0], new_score, key_chosen)
+                    )
                     top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
                     min_value = top_tables[ks][1]
 
@@ -500,8 +581,8 @@ class WithProv(SearchTables):
         time3 = end_time1 - start_time1
 
         if tflag == True:
-            print('Schema Mapping Cost: ', time1)
-            print('Totally Cost: ', time3)
+            print("Schema Mapping Cost: ", time1)
+            print("Totally Cost: ", time3)
 
         rtables_names = self.remove_dup(top_tables, ks)
 
@@ -512,7 +593,9 @@ class WithProv(SearchTables):
 
         return rtables
 
-    def search_joinable_tables(self, query, beta, k, thres_key_cache, thres_key_prune, tflag):
+    def search_joinable_tables(
+        self, query, beta, k, thres_key_cache, thres_key_prune, tflag
+    ):
 
         self.query = query
         self.already_map = {}
@@ -521,13 +604,17 @@ class WithProv(SearchTables):
 
         topk_tables = []
         SM_test = SchemaMapping()
-        groups_possibly_matched = SM_test.mapping_naive_groups(self.query, self.schema_element_sample)
+        groups_possibly_matched = SM_test.mapping_naive_groups(
+            self.query, self.schema_element_sample
+        )
         self.query_fd = {}
 
         start_time1 = timeit.default_timer()
         time1 = 0
         start_time = timeit.default_timer()
-        meta_mapping = SM_test.mapping_naive_tables(self.query, self.schema_element, groups_possibly_matched)
+        meta_mapping = SM_test.mapping_naive_tables(
+            self.query, self.schema_element, groups_possibly_matched
+        )
         end_time = timeit.default_timer()
         time1 += end_time - start_time
         time2 = 0
@@ -541,7 +628,9 @@ class WithProv(SearchTables):
                 continue
 
             start_time = timeit.default_timer()
-            SM = self.schema_mapping(self.query, self.real_tables[i], meta_mapping, gid, False)
+            SM = self.schema_mapping(
+                self.query, self.real_tables[i], meta_mapping, gid, False
+            )
             end_time = timeit.default_timer()
             time2 += end_time - start_time
 
@@ -549,8 +638,15 @@ class WithProv(SearchTables):
                 continue
 
             start_time = timeit.default_timer()
-            table_sim = self.comp_table_joinable(self.query, self.real_tables[i], beta, SM, gid, thres_key_prune,
-                                                 thres_key_cache)
+            table_sim = self.comp_table_joinable(
+                self.query,
+                self.real_tables[i],
+                beta,
+                SM,
+                gid,
+                thres_key_prune,
+                thres_key_cache,
+            )
             end_time = timeit.default_timer()
             time3 += end_time - start_time
             topk_tables.append((i, table_sim))
@@ -565,9 +661,9 @@ class WithProv(SearchTables):
         rtables_names = self.remove_dup(topk_tables, k)
 
         if tflag == True:
-            print('Schema Mapping Cost: ', time1 + time2)
-            print('Joinability Computation Cost: ', time3)
-            print('Totally Cost: ', time4)
+            print("Schema Mapping Cost: ", time1 + time2)
+            print("Joinability Computation Cost: ", time3)
+            print("Totally Cost: ", time4)
 
         rtables = []
         for i in rtables_names:
@@ -575,7 +671,9 @@ class WithProv(SearchTables):
 
         return rtables
 
-    def search_joinable_tables_threshold1(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag):
+    def search_joinable_tables_threshold1(
+        self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag
+    ):
 
         self.query = query
         self.already_map = {}
@@ -583,14 +681,18 @@ class WithProv(SearchTables):
             self.already_map[i] = {}
 
         SM_test = SchemaMapping()
-        groups_possibly_matched = SM_test.mapping_naive_groups(self.query, self.schema_element_sample)
+        groups_possibly_matched = SM_test.mapping_naive_groups(
+            self.query, self.schema_element_sample
+        )
         self.query_fd = {}
 
         start_time1 = timeit.default_timer()
 
         time1 = 0
         start_time = timeit.default_timer()
-        meta_mapping = SM_test.mapping_naive_tables(self.query, self.schema_element, groups_possibly_matched)
+        meta_mapping = SM_test.mapping_naive_tables(
+            self.query, self.schema_element, groups_possibly_matched
+        )
         end_time = timeit.default_timer()
         time1 += end_time - start_time
 
@@ -625,9 +727,12 @@ class WithProv(SearchTables):
                 if sk not in SM:
                     tableSnotintableR.append(sk)
 
-            vname_score = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
-            vname_score2 = float(max(len(tableR.columns.values), len(tableS.columns.values)) - 1) / float(
-                len(tableR.columns.values) + len(tableSnotintableR))
+            vname_score = float(1) / float(
+                len(tableR.columns.values) + len(tableSnotintableR)
+            )
+            vname_score2 = float(
+                max(len(tableR.columns.values), len(tableS.columns.values)) - 1
+            ) / float(len(tableR.columns.values) + len(tableSnotintableR))
             ubound = beta * vname_score2 + float(1 - beta) * Cache_MaxSim[tname]
 
             rank2.append(ubound)
@@ -648,16 +753,27 @@ class WithProv(SearchTables):
             tableR = self.real_tables[rank_candidate[i][0]]
             SM = rank_candidate[i][2]
             gid = self.table_group[rank_candidate[i][0][6:]]
-            top_tables.append((rank_candidate[i][0],
-                               self.comp_table_joinable(self.query, tableR, beta, SM, gid, thres_key_prune,
-                                                        thres_key_cache)))
+            top_tables.append(
+                (
+                    rank_candidate[i][0],
+                    self.comp_table_joinable(
+                        self.query,
+                        tableR,
+                        beta,
+                        SM,
+                        gid,
+                        thres_key_prune,
+                        thres_key_cache,
+                    ),
+                )
+            )
 
         top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
         min_value = top_tables[-1][1]
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
             if ks + id >= len(rank_candidate):
                 break
 
@@ -673,8 +789,9 @@ class WithProv(SearchTables):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 SM = rank_candidate[ks + id][2]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
-                new_score = self.comp_table_joinable(self.query, tableR, beta, SM, gid, thres_key_cache,
-                                                     thres_key_cache)
+                new_score = self.comp_table_joinable(
+                    self.query, tableR, beta, SM, gid, thres_key_cache, thres_key_cache
+                )
                 if new_score <= min_value:
                     continue
                 else:
@@ -688,8 +805,8 @@ class WithProv(SearchTables):
         rtables_names = self.remove_dup(top_tables, k)
 
         if tflag == True:
-            print('Schema Mapping Cost: ', time1)
-            print('Totally Cost: ', time3)
+            print("Schema Mapping Cost: ", time1)
+            print("Totally Cost: ", time3)
 
         rtables = []
         for i in rtables_names:
@@ -697,7 +814,9 @@ class WithProv(SearchTables):
 
         return rtables
 
-    def search_joinable_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag):
+    def search_joinable_tables_threshold2(
+        self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag
+    ):
 
         self.query = query
         self.query_fd = {}
@@ -721,9 +840,15 @@ class WithProv(SearchTables):
 
         time1 = 0
         start_time = timeit.default_timer()
-        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(self.query, query_col, \
-                                                                    self.schema_element_sample, self.schema_element, \
-                                                                    unmatched, tflag, self.schema_element_dtype)
+        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(
+            self.query,
+            query_col,
+            self.schema_element_sample,
+            self.schema_element,
+            unmatched,
+            tflag,
+            self.schema_element_dtype,
+        )
         end_time = timeit.default_timer()
         time1 += end_time - start_time
 
@@ -758,9 +883,12 @@ class WithProv(SearchTables):
                 if sk not in SM:
                     tableSnotintableR.append(sk)
 
-            vname_score = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
-            vname_score2 = float(max(len(tableR.columns.values), len(tableS.columns.values)) - 1) / float(
-                len(tableR.columns.values) + len(tableSnotintableR))
+            vname_score = float(1) / float(
+                len(tableR.columns.values) + len(tableSnotintableR)
+            )
+            vname_score2 = float(
+                max(len(tableR.columns.values), len(tableS.columns.values)) - 1
+            ) / float(len(tableR.columns.values) + len(tableSnotintableR))
             ubound = beta * vname_score2 + float(1 - beta) * Cache_MaxSim[tname]
 
             rank2.append(ubound)
@@ -781,12 +909,24 @@ class WithProv(SearchTables):
             tableR = self.real_tables[rank_candidate[i][0]]
             SM_real = rank_candidate[i][2]
             gid = self.table_group[rank_candidate[i][0][6:]]
-            score, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_joinable_key(SM_test, self.query,
-                                                                                               tableR, beta, SM_real,
-                                                                                               gid, meta_mapping,
-                                                                                               self.schema_linking,
-                                                                                               thres_key_prune,
-                                                                                               unmatched)
+            (
+                score,
+                meta_mapping,
+                unmatched,
+                sm_time,
+                key_chosen,
+            ) = self.comp_table_joinable_key(
+                SM_test,
+                self.query,
+                tableR,
+                beta,
+                SM_real,
+                gid,
+                meta_mapping,
+                self.schema_linking,
+                thres_key_prune,
+                unmatched,
+            )
             top_tables.append((rank_candidate[i][0], score, key_chosen))
             time1 += sm_time
 
@@ -795,7 +935,7 @@ class WithProv(SearchTables):
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
             if ks + id >= len(rank_candidate):
                 break
 
@@ -811,21 +951,32 @@ class WithProv(SearchTables):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 SM_real = rank_candidate[ks + id][2]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
-                new_score, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_joinable_key(SM_test,
-                                                                                                       self.query,
-                                                                                                       tableR,
-                                                                                                       beta, SM_real,
-                                                                                                       gid,
-                                                                                                       meta_mapping,
-                                                                                                       self.schema_linking,
-                                                                                                       thres_key_prune,
-                                                                                                       unmatched)
+                (
+                    new_score,
+                    meta_mapping,
+                    unmatched,
+                    sm_time,
+                    key_chosen,
+                ) = self.comp_table_joinable_key(
+                    SM_test,
+                    self.query,
+                    tableR,
+                    beta,
+                    SM_real,
+                    gid,
+                    meta_mapping,
+                    self.schema_linking,
+                    thres_key_prune,
+                    unmatched,
+                )
                 time1 += sm_time
 
                 if new_score <= min_value:
                     continue
                 else:
-                    top_tables.append((rank_candidate[ks + id][0], new_score, key_chosen))
+                    top_tables.append(
+                        (rank_candidate[ks + id][0], new_score, key_chosen)
+                    )
                     top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
                     min_value = top_tables[ks][1]
 
@@ -835,8 +986,8 @@ class WithProv(SearchTables):
         rtables_names = self.remove_dup(top_tables, k)
 
         if tflag == True:
-            print('Schema Mapping Cost: ', time1)
-            print('Totally Cost: ', time3)
+            print("Schema Mapping Cost: ", time1)
+            print("Totally Cost: ", time3)
 
         rtables = []
         for i, j in rtables_names:
@@ -848,20 +999,20 @@ class WithProv(SearchTables):
     def search_role_sim_tables(self, query, k):
         test_class = SearchProv()
         table_names = test_class.search_topk(query, k)
-        table_names = [t.split('_') for t in table_names]
+        table_names = [t.split("_") for t in table_names]
         db_name = {}
         for t in table_names:
             nid = t[-1]
-            vname = '_'.join(t[1:-2])
+            vname = "_".join(t[1:-2])
             cid = str(self.n_l2cid[nid][int(t[-2])])
             db_name[nid + ";" + vname + ";" + cid] = ""
         print(db_name)
         db_return = []
         for t in self.real_tables.keys():
-            temp = t[6:].split('_')
+            temp = t[6:].split("_")
             cid = str(temp[0])
             nid = str(temp[-1])
-            vname = str('_'.join(temp[1:-2]))
+            vname = str("_".join(temp[1:-2]))
             sname = nid + ";" + vname + ";" + cid
             if sname in db_name:
                 db_return.append((t, self.real_tables[t]))

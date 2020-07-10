@@ -18,8 +18,7 @@ def main(kid):
     km.start_channels()
 
     # FIXME: Why are we defining the function if we are not calling it?
-    code = (
-        f"""
+    code = f"""
         from sqlalchemy import create_engine
         
         def juneau_connect():
@@ -31,7 +30,6 @@ def main(kid):
             )
             return engine.connect()
         """
-    )
     km.execute_interactive(code, timeout=TIMEOUT)
     km.stop_channels()
 

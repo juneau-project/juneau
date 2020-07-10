@@ -4,18 +4,17 @@ import timeit
 
 
 class SchemaMapping_SK:
-
-    def __init__(self, sim_thres = 0.2):
+    def __init__(self, sim_thres=0.2):
         self.sim_thres = sim_thres
 
     def jaccard_similarity(self, colA, colB):
 
         if min(len(colA), len(colB)) == 0:
             return 0
-        #colA = np.array(colA)
+        # colA = np.array(colA)
         union = len(np.union1d(colA, colB))
         inter = len(np.intersect1d(colA, colB))
-        return float(inter)/float(union)
+        return float(inter) / float(union)
 
     def mapping_naive(self, tableA, tableB):
 
@@ -95,9 +94,9 @@ class SchemaMapping_SK:
             rv = matching[0][2]
 
         end_time = timeit.default_timer()
-        print('raw schema mapping: ', end_time - start_time)
-        print('sim schema mapping: ', time1)
-        print('sim times: ', c1)
+        print("raw schema mapping: ", end_time - start_time)
+        print("sim schema mapping: ", time1)
+        print("sim times: ", c1)
         return Mpair, rv
 
     def mapping_naive_tables(self, tableA, valid_keys, schema_element, group_array):
@@ -150,14 +149,17 @@ class SchemaMapping_SK:
                 if matching[i][2] < self.sim_thres:
                     break
                 else:
-                    if matching[i][0] not in Mpair[group] and matching[i][1] not in MpairR[group]:
+                    if (
+                        matching[i][0] not in Mpair[group]
+                        and matching[i][1] not in MpairR[group]
+                    ):
                         Mpair[group][matching[i][0]] = matching[i][1]
                         MpairR[group][matching[i][1]] = matching[i][0]
 
         end_time = timeit.default_timer()
-        print('raw schema mapping: ', end_time - start_time)
-        print('sim schema mapping: ', time1)
-        print('sim times: ', c1)
+        print("raw schema mapping: ", end_time - start_time)
+        print("sim schema mapping: ", time1)
+        print("sim times: ", c1)
         return Mpair
 
     def mapping_naive_groups(self, tableA, schema_element):
@@ -222,8 +224,8 @@ class SchemaMapping_SK:
 
             matching = sorted(matching, key=lambda d: d[2], reverse=True)
             if len(matching) == 0:
-                #print(scma)
-                #print(schema_element[group].keys())
+                # print(scma)
+                # print(schema_element[group].keys())
                 continue
 
             if matching[0][2] < self.sim_thres:
@@ -232,9 +234,8 @@ class SchemaMapping_SK:
                 group_list.append(group)
 
         end_time = timeit.default_timer()
-#        print('raw schema mapping: ', end_time - start_time)
-#        print('sim schema mapping: ', time1)
-#        print('sim times: ', c1)
+        #        print('raw schema mapping: ', end_time - start_time)
+        #        print('sim schema mapping: ', time1)
+        #        print('sim times: ', c1)
 
         return group_list
-

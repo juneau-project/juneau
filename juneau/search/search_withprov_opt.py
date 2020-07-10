@@ -16,17 +16,16 @@ from juneau.db.table_db import generate_graph, pre_vars
 
 import juneau.config as cfg
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 
 class WithProv_Optimized(WithProv):
-
     def __init__(self, dbname, schema=None):
         super().__init__(dbname, schema)
 
         self.index()
 
-        logging.info('Data Search Extension Prepared!')
+        logging.info("Data Search Extension Prepared!")
 
     def approximate_join_key(self, tableA, tableB, SM, key, thres_prune):
 
@@ -62,22 +61,26 @@ class WithProv_Optimized(WithProv):
 
     def read_graph_of_notebook(self):
         Graphs = {}
-        dependency = pd.read_sql_table('dependen', self.eng, schema=cfg.sql_graph)  # , schema='graph_model')
-        line2cid = pd.read_sql_table('line2cid', self.eng, schema=cfg.sql_graph)  # , schema='graph_model')
-        lastliid = pd.read_sql_table('lastliid', self.eng, schema=cfg.sql_graph)
+        dependency = pd.read_sql_table(
+            "dependen", self.eng, schema=cfg.sql_graph
+        )  # , schema='graph_model')
+        line2cid = pd.read_sql_table(
+            "line2cid", self.eng, schema=cfg.sql_graph
+        )  # , schema='graph_model')
+        lastliid = pd.read_sql_table("lastliid", self.eng, schema=cfg.sql_graph)
 
         dependency_store = {}
         line2cid_store = {}
         lastliid_store = {}
 
         for index, row in dependency.iterrows():
-            dependency_store[row['view_id']] = json.loads(row['view_cmd'])
+            dependency_store[row["view_id"]] = json.loads(row["view_cmd"])
 
         for index, row in line2cid.iterrows():
-            line2cid_store[row['view_id']] = json.loads(row['view_cmd'])
+            line2cid_store[row["view_id"]] = json.loads(row["view_cmd"])
 
         for index, row in lastliid.iterrows():
-            lastliid_store[row['view_id']] = json.loads(row['view_cmd'])
+            lastliid_store[row["view_id"]] = json.loads(row["view_cmd"])
 
         for id, nid in enumerate(dependency_store.keys()):
             # Graph = self.__generate_graph(nid, dependency_store[nid], line2cid_store[nid])
@@ -89,27 +92,44 @@ class WithProv_Optimized(WithProv):
                     continue
 
                 nid_name = nid.split("_")[-1]
-                Graph = self.__generate_graph(nid_name, dependency_store[nid], line2cid_store[nid])
+                Graph = self.__generate_graph(
+                    nid_name, dependency_store[nid], line2cid_store[nid]
+                )
 
                 if len(list(Graph.nodes)) == 0:
                     continue
 
                 var_name = "_".join(nid.split("_")[1:-1])
-                query_name = 'var_' + var_name + '_' + str(line2cid_store[nid][str(line_id)]) + "_" + str(nid_name)
+                query_name = (
+                    "var_"
+                    + var_name
+                    + "_"
+                    + str(line2cid_store[nid][str(line_id)])
+                    + "_"
+                    + str(nid_name)
+                )
 
                 if Graph.has_node(query_name):
                     query_node = pre_vars(query_name, Graph)
                     Graphs[nid] = query_node
             except:
-                logging.error("Can not generate the graph  " + str(id) + " " + str(sys.exc_info()[0]) + " !")
+                logging.error(
+                    "Can not generate the graph  "
+                    + str(id)
+                    + " "
+                    + str(sys.exc_info()[0])
+                    + " !"
+                )
 
         return Graphs, line2cid_store
 
     def __generate_query_node_from_code(self, var_name, code):
 
-        code = '\n'.join([t for t in code.split('\\n') if len(t) > 0 and t[0] != '%' and t[0] != '#'])
-        code = '\''.join(code.split('\\\''))
-        code = code.split('\n')
+        code = "\n".join(
+            [t for t in code.split("\\n") if len(t) > 0 and t[0] != "%" and t[0] != "#"]
+        )
+        code = "'".join(code.split("\\'"))
+        code = code.split("\n")
         dependency, _, all_code = self.__parse_code(code)
         logging.info(all_code)
         logging.info(dependency)
@@ -119,7 +139,7 @@ class WithProv_Optimized(WithProv):
         logging.info("Output Graph")
         logging.info(list(graph.nodes))
 
-        query_name = 'var_' + var_name + '_' + str(line_id)
+        query_name = "var_" + var_name + "_" + str(line_id)
 
         query_node = pre_vars(query_name, graph)
         return query_node
@@ -132,22 +152,22 @@ class WithProv_Optimized(WithProv):
             pair_dict = {}
             right = []
             for pa, pb in dependency[i][1]:
-                if pa + ';' + pb not in pair_dict:
-                    pair_dict[pa + ';' + pb] = 0
+                if pa + ";" + pb not in pair_dict:
+                    pair_dict[pa + ";" + pb] = 0
                     right.append([pa, pb])
 
             left_node = []
             for ele in left:
                 if type(ele) is tuple or type(ele) is list:
                     ele = ele[0]
-                left_node.append('var_' + ele + '_' + str(line2cid[i]) + '_' + str(nid))
+                left_node.append("var_" + ele + "_" + str(line2cid[i]) + "_" + str(nid))
             # print('left',left_node)
 
             for ele in left:
                 if type(ele) is tuple or type(ele) is list:
                     ele = ele[0]
 
-                new_node = 'var_' + ele + '_' + str(line2cid[i]) + '_' + str(nid)
+                new_node = "var_" + ele + "_" + str(line2cid[i]) + "_" + str(nid)
 
                 G.add_node(new_node, cell_id=line2cid[i], line_id=i, var=ele)
 
@@ -159,16 +179,18 @@ class WithProv_Optimized(WithProv):
                     for cand in candidate_list:
                         # print('cand', cand)
 
-                        if G.nodes[cand]['var'] == dep:
+                        if G.nodes[cand]["var"] == dep:
                             if cand in left_node:
                                 # print(cand)
                                 continue
-                            rankbyline.append((cand, int(G.nodes[cand]['line_id'])))
+                            rankbyline.append((cand, int(G.nodes[cand]["line_id"])))
                     rankbyline = sorted(rankbyline, key=lambda d: d[1], reverse=True)
 
                     if len(rankbyline) == 0:
-                        if dep not in ['np', 'pd']:
-                            candidate_node = 'var_' + dep + '_' + str(1) + '_' + str(nid)
+                        if dep not in ["np", "pd"]:
+                            candidate_node = (
+                                "var_" + dep + "_" + str(1) + "_" + str(nid)
+                            )
                             G.add_node(candidate_node, cell_id=0, line_id=1, var=dep)
                         else:
                             candidate_node = dep + str(nid)
@@ -195,20 +217,20 @@ class WithProv_Optimized(WithProv):
             codes = cell.split("\\n")
             new_codes = []
             for code in codes:
-                if code[:3].lower() == 'def':
+                if code[:3].lower() == "def":
                     fflg = True
                     continue
 
                 temp_code = code.strip(" ")
                 temp_code = temp_code.strip("\t")
 
-                if temp_code[:6].lower() == 'return':
+                if temp_code[:6].lower() == "return":
                     fflg = False
                     continue
 
                 code = code.strip("\n")
                 code = code.strip(" ")
-                code = code.split("\"")
+                code = code.split('"')
                 code = "'".join(code)
                 code = code.split("\\")
                 code = "".join(code)
@@ -217,9 +239,9 @@ class WithProv_Optimized(WithProv):
                 lid = lid + 1
                 if len(code) == 0:
                     continue
-                if code[0] == '%':
+                if code[0] == "%":
                     continue
-                if code[0] == '#':
+                if code[0] == "#":
                     continue
 
                 try:
@@ -229,7 +251,7 @@ class WithProv_Optimized(WithProv):
                 except:
                     logging.info(code)
 
-            all_code = all_code + '\n'.join(new_codes) + '\n'
+            all_code = all_code + "\n".join(new_codes) + "\n"
 
         all_code = all_code.strip("\n")
 
@@ -241,13 +263,13 @@ class WithProv_Optimized(WithProv):
         ret = 0
         code = code.split("\n")
         for id, i in enumerate(code):
-            if '=' not in i:
+            if "=" not in i:
                 continue
-            j = i.split('=')
+            j = i.split("=")
             j = [t.strip(" ") for t in j]
 
             if varname in j[0]:
-                if varname == j[0][-len(varname):]:
+                if varname == j[0][-len(varname) :]:
                     ret = id + 1
         return ret
 
@@ -259,7 +281,9 @@ class WithProv_Optimized(WithProv):
                 if len(self.schema_element[i][sc]) < row_size:
                     self.schema_element_sample_row[i][sc] = self.schema_element[i][sc]
                 else:
-                    self.schema_element_sample_row[i][sc] = random.sample(self.schema_element[i][sc], row_size)
+                    self.schema_element_sample_row[i][sc] = random.sample(
+                        self.schema_element[i][sc], row_size
+                    )
 
     def sketch_column_and_row_for_meta_mapping(self, sz=5, row_size=1000):
         self.schema_element_sample_col = {}
@@ -268,18 +292,24 @@ class WithProv_Optimized(WithProv):
             if len(self.schema_element[i].keys()) <= sz:
                 for sc in self.schema_element[i].keys():
                     if len(self.schema_element[i][sc]) < row_size:
-                        self.schema_element_sample_col[i][sc] = self.schema_element[i][sc]
+                        self.schema_element_sample_col[i][sc] = self.schema_element[i][
+                            sc
+                        ]
                     else:
-                        self.schema_element_sample_col[i][sc] = random.sample(self.schema_element[i][sc], row_size)
+                        self.schema_element_sample_col[i][sc] = random.sample(
+                            self.schema_element[i][sc], row_size
+                        )
             else:
                 sc_choice = []
                 for sc in self.schema_element[i].keys():
                     if sc == "Unnamed: 0" or "index" in sc:
                         continue
-                    if (self.schema_element_dtype[i][sc] is np.dtype(float)):
+                    if self.schema_element_dtype[i][sc] is np.dtype(float):
                         continue
                     sc_value = list(self.schema_element[i][sc])
-                    sc_choice.append((sc, float(len(set(sc_value))) / float(len(sc_value))))
+                    sc_choice.append(
+                        (sc, float(len(set(sc_value))) / float(len(sc_value)))
+                    )
                 sc_choice = sorted(sc_choice, key=lambda d: d[1], reverse=True)
 
                 count = 0
@@ -287,9 +317,13 @@ class WithProv_Optimized(WithProv):
                     if count == sz:
                         break
                     if len(self.schema_element[i][sc]) < row_size:
-                        self.schema_element_sample_col[i][sc] = self.schema_element[i][sc]
+                        self.schema_element_sample_col[i][sc] = self.schema_element[i][
+                            sc
+                        ]
                     else:
-                        self.schema_element_sample_col[i][sc] = random.sample(self.schema_element[i][sc], row_size)
+                        self.schema_element_sample_col[i][sc] = random.sample(
+                            self.schema_element[i][sc], row_size
+                        )
 
                     count += 1
 
@@ -320,7 +354,7 @@ class WithProv_Optimized(WithProv):
     def index(self):
         self.sample_rows_for_each_column()
         self.sketch_column_and_row_for_meta_mapping()
-        logging.info('Reading Graph of Notebooks.')
+        logging.info("Reading Graph of Notebooks.")
         self.Graphs, self.n_l2cid = self.read_graph_of_notebook()
 
     def schema_mapping(self, tableA, tableB, meta_mapping, gid):
@@ -333,7 +367,10 @@ class WithProv_Optimized(WithProv):
 
         for i in tableB.columns.tolist():
             if self.schema_linking[gid][i] in t_mapping:
-                if tableB[i].dtype != tableA[t_mapping[self.schema_linking[gid][i]]].dtype:
+                if (
+                    tableB[i].dtype
+                    != tableA[t_mapping[self.schema_linking[gid][i]]].dtype
+                ):
                     continue
                 s_mapping[t_mapping[self.schema_linking[gid][i]]] = i
 
@@ -360,8 +397,12 @@ class WithProv_Optimized(WithProv):
         query_col_valid = self.sketch_query_cols(query)
 
         # do partial schema mapping
-        partial_mapping = SM_test.mapping_naive_tables(query, query_col_valid, self.schema_element_sample_col,
-                                                       self.schema_element_dtype)
+        partial_mapping = SM_test.mapping_naive_tables(
+            query,
+            query_col_valid,
+            self.schema_element_sample_col,
+            self.schema_element_dtype,
+        )
 
         unmatched = {}
         for i in partial_mapping.keys():
@@ -398,10 +439,13 @@ class WithProv_Optimized(WithProv):
                 tableS = query
                 tableR = self.real_tables[i]
                 SM, ms = self.schema_mapping(tableS, tableR, partial_mapping, gid)
-                rank_candidate.append((tname, float(1) / float(table_prov_score[tname] + 1), SM))
+                rank_candidate.append(
+                    (tname, float(1) / float(table_prov_score[tname] + 1), SM)
+                )
 
                 upp_col_sim = float(min(tableS.shape[1], tableR.shape[1])) / float(
-                    max(tableS.shape[1], tableR.shape[1]))
+                    max(tableS.shape[1], tableR.shape[1])
+                )
                 rank2.append(upp_col_sim)
 
         rank_candidate = sorted(rank_candidate, key=lambda d: d[1], reverse=True)
@@ -420,12 +464,24 @@ class WithProv_Optimized(WithProv):
             tableR = self.real_tables[rank_candidate[i][0]]
             gid = self.table_group[rank_candidate[i][0][6:]]
             SM_real = rank_candidate[i][2]
-            SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(query, tableR, gid,
-                                                                                          partial_mapping,
-                                                                                          self.schema_linking,
-                                                                                          unmatched, mapped=SM_real)
-            score = float(beta) * self.col_similarity(tableS, tableR, SM_real, 1) + float(1 - beta) * rank_candidate[i][
-                1]
+            (
+                SM_real,
+                meta_mapping,
+                unmatched,
+                sm_time,
+            ) = SM_test.mapping_naive_incremental(
+                query,
+                tableR,
+                gid,
+                partial_mapping,
+                self.schema_linking,
+                unmatched,
+                mapped=SM_real,
+            )
+            score = (
+                float(beta) * self.col_similarity(tableS, tableR, SM_real, 1)
+                + float(1 - beta) * rank_candidate[i][1]
+            )
             top_tables.append((rank_candidate[i][0], score))
 
         top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
@@ -434,11 +490,14 @@ class WithProv_Optimized(WithProv):
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
             if ks + id >= len(rank_candidate):
                 break
 
-            threshold = float(beta) * rank2[ks + id] + float(1 - beta) * rank_candidate[ks + id][1]
+            threshold = (
+                float(beta) * rank2[ks + id]
+                + float(1 - beta) * rank_candidate[ks + id][1]
+            )
 
             if threshold <= min_value * theta:
                 break
@@ -450,13 +509,25 @@ class WithProv_Optimized(WithProv):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
                 SM_real = rank_candidate[ks + id][2]
-                SM_real, meta_mapping, unmatched, sm_time = SM_test.mapping_naive_incremental(query, tableR, gid,
-                                                                                              partial_mapping,
-                                                                                              self.schema_linking,
-                                                                                              unmatched, mapped=SM_real)
+                (
+                    SM_real,
+                    meta_mapping,
+                    unmatched,
+                    sm_time,
+                ) = SM_test.mapping_naive_incremental(
+                    query,
+                    tableR,
+                    gid,
+                    partial_mapping,
+                    self.schema_linking,
+                    unmatched,
+                    mapped=SM_real,
+                )
 
-                new_score = float(beta) * self.col_similarity(query, tableR, SM_real, 1) + float(1 - beta) * \
-                            rank_candidate[i][1]
+                new_score = (
+                    float(beta) * self.col_similarity(query, tableR, SM_real, 1)
+                    + float(1 - beta) * rank_candidate[i][1]
+                )
 
                 if new_score <= min_value:
                     continue
@@ -476,8 +547,19 @@ class WithProv_Optimized(WithProv):
 
         return rtables
 
-    def search_alternative_features(self, query, k, code, var_name, alpha, beta, gamma, theta, thres_key_prune,
-                                    thres_key_cache):
+    def search_alternative_features(
+        self,
+        query,
+        k,
+        code,
+        var_name,
+        alpha,
+        beta,
+        gamma,
+        theta,
+        thres_key_prune,
+        thres_key_cache,
+    ):
 
         # choose only top possible key columns
         query_col = self.sketch_query_cols(query)
@@ -485,8 +567,9 @@ class WithProv_Optimized(WithProv):
         # introduce the schema mapping class
         SM_test = SchemaMapping()
         # do partial schema mapping
-        partial_mapping = SM_test.mapping_naive_tables(query, query_col, self.schema_element_sample_col,
-                                                       self.schema_element_dtype)
+        partial_mapping = SM_test.mapping_naive_tables(
+            query, query_col, self.schema_element_sample_col, self.schema_element_dtype
+        )
 
         unmatched = {}
         for i in partial_mapping.keys():
@@ -558,15 +641,22 @@ class WithProv_Optimized(WithProv):
                     if sk not in SM:
                         tableSnotintableR.append(sk)
 
-                upper_bound_col_score1 = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
+                upper_bound_col_score1 = float(1) / float(
+                    len(tableR.columns.values) + len(tableSnotintableR)
+                )
 
-                upper_bound_col_score = (upper_bound_col_score1 + float(
-                    min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1) \
-                                         / float(len(tableR.columns.values) + len(tableSnotintableR) - 1))
+                upper_bound_col_score = upper_bound_col_score1 + float(
+                    min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1
+                ) / float(len(tableR.columns.values) + len(tableSnotintableR) - 1)
 
-                upper_bound_row_score = ms / float(abs(tableR.shape[0] - tableS.shape[0]) + 1)
+                upper_bound_row_score = ms / float(
+                    abs(tableR.shape[0] - tableS.shape[0]) + 1
+                )
 
-                rank2.append(float(alpha) * upper_bound_col_score + float(beta) * upper_bound_row_score)
+                rank2.append(
+                    float(alpha) * upper_bound_col_score
+                    + float(beta) * upper_bound_row_score
+                )
 
                 rank_candidate.append((tname, float(table_prov_score[tname]), SM))
 
@@ -586,23 +676,39 @@ class WithProv_Optimized(WithProv):
             gid = self.table_group[rank_candidate[i][0][6:]]
             SM_real = rank_candidate[i][2]
 
-            col_sim, row_sim, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test,
-                                                                                                            query,
-                                                                                                            tableR,
-                                                                                                            SM_real,
-                                                                                                            gid,
-                                                                                                            partial_mapping,
-                                                                                                            self.schema_linking,
-                                                                                                            thres_key_prune,
-                                                                                                            thres_key_cache,
-                                                                                                            unmatched)
+            (
+                col_sim,
+                row_sim,
+                meta_mapping,
+                unmatched,
+                sm_time,
+                key_chosen,
+            ) = self.comp_table_similarity_key(
+                SM_test,
+                query,
+                tableR,
+                SM_real,
+                gid,
+                partial_mapping,
+                self.schema_linking,
+                thres_key_prune,
+                thres_key_cache,
+                unmatched,
+            )
 
-            score = float(alpha) * (col_sim) + float(beta) * row_sim / float(
-                abs(tableR.shape[0] - tableS.shape[0]) + 1) + float(gamma) * rank_candidate[i][1]
+            score = (
+                float(alpha) * (col_sim)
+                + float(beta)
+                * row_sim
+                / float(abs(tableR.shape[0] - tableS.shape[0]) + 1)
+                + float(gamma) * rank_candidate[i][1]
+            )
 
             logging.info(rank_candidate[i][0])
             logging.info(col_sim * alpha)
-            logging.info(row_sim * beta / float(abs(tableR.shape[0] - tableS.shape[0]) + 1))
+            logging.info(
+                row_sim * beta / float(abs(tableR.shape[0] - tableS.shape[0]) + 1)
+            )
             logging.info(rank_candidate[i][1] * gamma)
             logging.info(score)
 
@@ -614,7 +720,7 @@ class WithProv_Optimized(WithProv):
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
 
             if ks + id >= len(rank_candidate):
                 break
@@ -631,22 +737,37 @@ class WithProv_Optimized(WithProv):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
                 SM_real = rank_candidate[ks + id][2]
-                col_sim, row_sim, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test,
-                                                                                                                query,
-                                                                                                                tableR,
-                                                                                                                SM_real,
-                                                                                                                gid,
-                                                                                                                partial_mapping,
-                                                                                                                self.schema_linking,
-                                                                                                                thres_key_prune,
-                                                                                                                thres_key_cache,
-                                                                                                                unmatched)
-                new_score = float(alpha) * (col_sim) + float(beta) * row_sim / float(
-                    abs(tableR.shape[0] - tableS.shape[0]) + 1) + float(gamma) * \
-                            rank_candidate[ks + id][1]
+                (
+                    col_sim,
+                    row_sim,
+                    meta_mapping,
+                    unmatched,
+                    sm_time,
+                    key_chosen,
+                ) = self.comp_table_similarity_key(
+                    SM_test,
+                    query,
+                    tableR,
+                    SM_real,
+                    gid,
+                    partial_mapping,
+                    self.schema_linking,
+                    thres_key_prune,
+                    thres_key_cache,
+                    unmatched,
+                )
+                new_score = (
+                    float(alpha) * (col_sim)
+                    + float(beta)
+                    * row_sim
+                    / float(abs(tableR.shape[0] - tableS.shape[0]) + 1)
+                    + float(gamma) * rank_candidate[ks + id][1]
+                )
                 logging.info(rank_candidate[ks + id][0])
                 logging.info(col_sim * alpha)
-                logging.info(row_sim * beta / float(abs(tableR.shape[0] - tableS.shape[0]) + 1))
+                logging.info(
+                    row_sim * beta / float(abs(tableR.shape[0] - tableS.shape[0]) + 1)
+                )
                 logging.info(rank_candidate[ks + id][1] * gamma)
                 logging.info(new_score)
 
@@ -655,7 +776,9 @@ class WithProv_Optimized(WithProv):
                 if new_score <= min_value:
                     continue
                 else:
-                    top_tables.append((rank_candidate[ks + id][0], new_score, key_chosen))
+                    top_tables.append(
+                        (rank_candidate[ks + id][0], new_score, key_chosen)
+                    )
                     top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
                     min_value = top_tables[ks][1]
 
@@ -678,8 +801,9 @@ class WithProv_Optimized(WithProv):
         # introduce the schema mapping class
         SM_test = SchemaMapping(sim_thres=0.6)
         # do partial schema mapping
-        partial_mapping = SM_test.mapping_naive_tables(query, query_col, self.schema_element_sample_col,
-                                                       self.schema_element_dtype)
+        partial_mapping = SM_test.mapping_naive_tables(
+            query, query_col, self.schema_element_sample_col, self.schema_element_dtype
+        )
 
         unmatched = {}
         for i in self.schema_linking.keys():
@@ -687,10 +811,14 @@ class WithProv_Optimized(WithProv):
             for j in query.columns.tolist():
                 unmatched[i][j] = {}
 
-        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(query, query_col, \
-                                                                    self.schema_element_sample_col, \
-                                                                    self.schema_element_sample_row, \
-                                                                    self.schema_element_dtype, unmatched)
+        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(
+            query,
+            query_col,
+            self.schema_element_sample_col,
+            self.schema_element_sample_row,
+            self.schema_element_dtype,
+            unmatched,
+        )
         logging.info("meta mapping finished!")
 
         rank_candidate = []
@@ -712,7 +840,9 @@ class WithProv_Optimized(WithProv):
 
             key_choice = []
             for kyA in SM.keys():
-                key_score = self.approximate_join_key(query, tableR, SM, kyA, thres_key_prune)
+                key_score = self.approximate_join_key(
+                    query, tableR, SM, kyA, thres_key_prune
+                )
                 key_choice.append((kyA, key_score))
 
             if len(key_choice) == 0:
@@ -744,7 +874,9 @@ class WithProv_Optimized(WithProv):
 
         return rtables
 
-    def search_similar_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag=False):
+    def search_similar_tables_threshold2(
+        self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag=False
+    ):
 
         self.query = query
 
@@ -766,8 +898,12 @@ class WithProv_Optimized(WithProv):
         time1 = 0
         start_time = timeit.default_timer()
         # Do mapping
-        meta_mapping = SM_test.mapping_naive_tables(self.query, query_col, self.schema_element_sample_col, \
-                                                    self.schema_element_dtype)
+        meta_mapping = SM_test.mapping_naive_tables(
+            self.query,
+            query_col,
+            self.schema_element_sample_col,
+            self.schema_element_dtype,
+        )
 
         end_time = timeit.default_timer()
         time1 += end_time - start_time
@@ -814,10 +950,13 @@ class WithProv_Optimized(WithProv):
                 if sk not in SM:
                     tableSnotintableR.append(sk)
 
-            vname_score = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
+            vname_score = float(1) / float(
+                len(tableR.columns.values) + len(tableSnotintableR)
+            )
 
-            vname_score2 = float(min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1) \
-                           / float(len(tableR.columns.values) + len(tableSnotintableR) - 1)
+            vname_score2 = float(
+                min(len(tableS.columns.tolist()), len(tableR.columns.tolist())) - 1
+            ) / float(len(tableR.columns.values) + len(tableSnotintableR) - 1)
 
             ubound = beta * vname_score2 + float(1 - beta) * Cache_MaxSim[tname]
 
@@ -839,13 +978,25 @@ class WithProv_Optimized(WithProv):
             tableR = self.real_tables[rank_candidate[i][0]]
             gid = self.table_group[rank_candidate[i][0][6:]]
             SM_real = rank_candidate[i][2]
-            score, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test, self.query,
-                                                                                                 tableR, beta, SM_real,
-                                                                                                 gid, meta_mapping,
-                                                                                                 self.schema_linking,
-                                                                                                 thres_key_prune,
-                                                                                                 thres_key_cache,
-                                                                                                 unmatched)
+            (
+                score,
+                meta_mapping,
+                unmatched,
+                sm_time,
+                key_chosen,
+            ) = self.comp_table_similarity_key(
+                SM_test,
+                self.query,
+                tableR,
+                beta,
+                SM_real,
+                gid,
+                meta_mapping,
+                self.schema_linking,
+                thres_key_prune,
+                thres_key_cache,
+                unmatched,
+            )
             top_tables.append((rank_candidate[i][0], score, key_chosen))
             time1 += sm_time
 
@@ -854,7 +1005,7 @@ class WithProv_Optimized(WithProv):
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
             if ks + id >= len(rank_candidate):
                 break
 
@@ -870,21 +1021,34 @@ class WithProv_Optimized(WithProv):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
                 SM_real = rank_candidate[ks + id][2]
-                rs, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_similarity_key(SM_test, self.query,
-                                                                                                  tableR, beta, SM_real,
-                                                                                                  gid,
-                                                                                                  meta_mapping,
-                                                                                                  self.schema_linking,
-                                                                                                  thres_key_prune,
-                                                                                                  thres_key_cache,
-                                                                                                  unmatched)
+                (
+                    rs,
+                    meta_mapping,
+                    unmatched,
+                    sm_time,
+                    key_chosen,
+                ) = self.comp_table_similarity_key(
+                    SM_test,
+                    self.query,
+                    tableR,
+                    beta,
+                    SM_real,
+                    gid,
+                    meta_mapping,
+                    self.schema_linking,
+                    thres_key_prune,
+                    thres_key_cache,
+                    unmatched,
+                )
                 time1 += sm_time
                 new_score = rs
 
                 if new_score <= min_value:
                     continue
                 else:
-                    top_tables.append((rank_candidate[ks + id][0], new_score, key_chosen))
+                    top_tables.append(
+                        (rank_candidate[ks + id][0], new_score, key_chosen)
+                    )
                     top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
                     min_value = top_tables[ks][1]
 
@@ -902,7 +1066,9 @@ class WithProv_Optimized(WithProv):
 
         return rtables
 
-    def search_joinable_tables_threshold2(self, query, beta, k, theta, thres_key_cache, thres_key_prune):
+    def search_joinable_tables_threshold2(
+        self, query, beta, k, theta, thres_key_cache, thres_key_prune
+    ):
 
         self.query = query
         self.query_fd = {}
@@ -925,14 +1091,20 @@ class WithProv_Optimized(WithProv):
 
         time1 = 0
         start_time = timeit.default_timer()
-        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(self.query, query_col, \
-                                                                    self.schema_element_sample_col, \
-                                                                    self.schema_element_sample_row, \
-                                                                    self.schema_element_dtype, unmatched)
+        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(
+            self.query,
+            query_col,
+            self.schema_element_sample_col,
+            self.schema_element_sample_row,
+            self.schema_element_dtype,
+            unmatched,
+        )
         end_time = timeit.default_timer()
         time1 += end_time - start_time
         # logging.info(str(meta_mapping))
-        logging.info("Initial Schema Mapping Costs: %s Seconds." % (end_time - start_time))
+        logging.info(
+            "Initial Schema Mapping Costs: %s Seconds." % (end_time - start_time)
+        )
 
         top_tables = []
         Cache_MaxSim = {}
@@ -965,9 +1137,12 @@ class WithProv_Optimized(WithProv):
                 if sk not in SM:
                     tableSnotintableR.append(sk)
 
-            vname_score = float(1) / float(len(tableR.columns.values) + len(tableSnotintableR))
-            vname_score2 = float(max(len(tableR.columns.values), len(tableS.columns.values)) - 1) / float(
-                len(tableR.columns.values) + len(tableSnotintableR))
+            vname_score = float(1) / float(
+                len(tableR.columns.values) + len(tableSnotintableR)
+            )
+            vname_score2 = float(
+                max(len(tableR.columns.values), len(tableS.columns.values)) - 1
+            ) / float(len(tableR.columns.values) + len(tableSnotintableR))
             ubound = beta * vname_score2 + float(1 - beta) * Cache_MaxSim[tname]
 
             rank2.append(ubound)
@@ -988,12 +1163,24 @@ class WithProv_Optimized(WithProv):
             tableR = self.real_tables[rank_candidate[i][0]]
             SM_real = rank_candidate[i][2]
             gid = self.table_group[rank_candidate[i][0][6:]]
-            score, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_joinable_key(SM_test, self.query,
-                                                                                               tableR, beta, SM_real,
-                                                                                               gid, meta_mapping,
-                                                                                               self.schema_linking,
-                                                                                               thres_key_prune,
-                                                                                               unmatched)
+            (
+                score,
+                meta_mapping,
+                unmatched,
+                sm_time,
+                key_chosen,
+            ) = self.comp_table_joinable_key(
+                SM_test,
+                self.query,
+                tableR,
+                beta,
+                SM_real,
+                gid,
+                meta_mapping,
+                self.schema_linking,
+                thres_key_prune,
+                unmatched,
+            )
             top_tables.append((rank_candidate[i][0], score, key_chosen))
             time1 += sm_time
 
@@ -1002,7 +1189,7 @@ class WithProv_Optimized(WithProv):
 
         ks = ks - 1
         id = 0
-        while (True):
+        while True:
             if ks + id >= len(rank_candidate):
                 break
 
@@ -1018,21 +1205,32 @@ class WithProv_Optimized(WithProv):
                 tableR = self.real_tables[rank_candidate[ks + id][0]]
                 SM_real = rank_candidate[ks + id][2]
                 gid = self.table_group[rank_candidate[ks + id][0][6:]]
-                new_score, meta_mapping, unmatched, sm_time, key_chosen = self.comp_table_joinable_key(SM_test,
-                                                                                                       self.query,
-                                                                                                       tableR,
-                                                                                                       beta, SM_real,
-                                                                                                       gid,
-                                                                                                       meta_mapping,
-                                                                                                       self.schema_linking,
-                                                                                                       thres_key_prune,
-                                                                                                       unmatched)
+                (
+                    new_score,
+                    meta_mapping,
+                    unmatched,
+                    sm_time,
+                    key_chosen,
+                ) = self.comp_table_joinable_key(
+                    SM_test,
+                    self.query,
+                    tableR,
+                    beta,
+                    SM_real,
+                    gid,
+                    meta_mapping,
+                    self.schema_linking,
+                    thres_key_prune,
+                    unmatched,
+                )
                 time1 += sm_time
 
                 if new_score <= min_value:
                     continue
                 else:
-                    top_tables.append((rank_candidate[ks + id][0], new_score, key_chosen))
+                    top_tables.append(
+                        (rank_candidate[ks + id][0], new_score, key_chosen)
+                    )
                     top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
                     min_value = top_tables[ks][1]
 
@@ -1041,8 +1239,8 @@ class WithProv_Optimized(WithProv):
 
         rtables_names = self.remove_dup(top_tables, k)
 
-        logging.info('Schema Mapping Costs: %s Seconds' % time1)
-        logging.info('Full Search Costs:%s Seconds' % time3)
+        logging.info("Schema Mapping Costs: %s Seconds" % time1)
+        logging.info("Full Search Costs:%s Seconds" % time3)
 
         rtables = []
         for i, j in rtables_names:
