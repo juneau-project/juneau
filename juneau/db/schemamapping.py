@@ -1,3 +1,21 @@
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+TODO: Explain what this module does.
+"""
+
 import numpy as np
 import pandas as pd
 import timeit
@@ -7,8 +25,8 @@ class SchemaMapping:
     def __init__(self, sim_thres=0.3):
         self.sim_thres = sim_thres
 
-    def jaccard_similarity(self, colA, colB):
-
+    @staticmethod
+    def jaccard_similarity(colA, colB):
         if min(len(colA), len(colB)) == 0:
             return 0
         colA = np.array(colA)
@@ -78,7 +96,7 @@ class SchemaMapping:
                         colB = colB
 
                 s1 = timeit.default_timer()
-                sim_col = self.jaccard_similarity(acol_set[nameA], colB)
+                sim_col = SchemaMapping.jaccard_similarity(acol_set[nameA], colB)
                 e1 = timeit.default_timer()
                 time1 += e1 - s1
                 c1 += 1

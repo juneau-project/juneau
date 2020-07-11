@@ -392,7 +392,6 @@ def choose_storage_strategy(table, table_df_full, table_view_full, running_time,
         cost.append((3, return_by_union_row[0]))
 
     cost = sorted(cost, key=lambda d: d[1])
-    logging.info(str(cost))
     if cost[0][0] == 0:
         return 0, None, None
     elif cost[0][0] == 1:

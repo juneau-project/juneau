@@ -203,7 +203,8 @@ class WithProv_Optimized(WithProv):
 
         return G
 
-    def __parse_code(self, code_list):
+    @staticmethod
+    def __parse_code(code_list):
 
         test = FuncLister()
         all_code = ""
@@ -212,8 +213,6 @@ class WithProv_Optimized(WithProv):
         lid = 1
         fflg = False
         for cid, cell in enumerate(code_list):
-            # logging.info(cid)
-            # logging.info(cell)
             codes = cell.split("\\n")
             new_codes = []
             for code in codes:
@@ -246,7 +245,7 @@ class WithProv_Optimized(WithProv):
 
                 try:
                     ast.parse(code)
-                    if fflg == False:
+                    if not fflg:
                         new_codes.append(code)
                 except:
                     logging.info(code)

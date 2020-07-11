@@ -130,17 +130,7 @@ class LineageStorage:
                 code = code.split("\\")
                 code = "".join(code)
 
-                if len(code) == 0:
-                    continue
-                if code[0] == "%":
-                    continue
-                if code[0] == "#":
-                    continue
-                if code[0] == " ":
-                    continue
-                if code == "":
-                    continue
-                if code == "\n":
+                if not code or code[0] in ["%", "#", " ", "\n"]:
                     continue
 
                 try:
@@ -180,23 +170,21 @@ class LineageStorage:
             for ele in left:
                 if type(ele) is tuple:
                     ele = ele[0]
-                left_node.append("var_" + ele + "_" + str(i) + "_" + str(nb_name))
+                left_node.append(f"var_{ele}_{i}_{nb_name}")
 
             for ele in left:
                 if type(ele) is tuple:
                     ele = ele[0]
 
-                new_node = "var_" + ele + "_" + str(i) + "_" + str(nb_name)
+                new_node = f"var_{ele}_{i}_{nb_name}"
                 G.add_node(new_node, cell_id=line2cid[i], line_id=i, var=ele)
 
                 for dep, ename in right:
                     candidate_list = G.nodes
                     rankbyline = []
                     for cand in candidate_list:
-                        # print('cand', cand)
                         if G.nodes[cand]["var"] == dep:
                             if cand in left_node:
-                                # print(cand)
                                 continue
                             rankbyline.append((cand, G.nodes[cand]["line_id"]))
                     rankbyline = sorted(rankbyline, key=lambda d: d[1], reverse=True)
