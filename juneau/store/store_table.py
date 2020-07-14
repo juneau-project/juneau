@@ -1,3 +1,21 @@
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+TODO: Explain what this module does.
+"""
+
 import psycopg2
 import timeit
 import pandas as pd
@@ -7,39 +25,40 @@ from sqlalchemy import create_engine
 
 from juneau.utils.cost_func import compute_table_size
 
-import juneau.config as cfg
+from juneau import config
 
 import logging
 
 
-class Store_Seperately:
+class SeparateStorage:
+    def __init__(self, dbname, time_flag=False):
+        self.dbname = dbname
+        self.__connect2db_init()
+        self.eng = self.__connect2db()
+        self.time_flag = time_flag
+        self.variable = []
+        self.update_time = 0
+
     def __connect2db(self):
         engine = create_engine(
-            "postgresql://"
-            + cfg.sql_name
-            + ":"
-            + cfg.sql_password
-            + "@localhost/"
-            + self.dbname
+            f"postgresql://{config.sql_name}:{config.sql_password}@localhost/{self.dbname}"
         )
         return engine.connect()
 
     def __connect2db_init(self):
-        # Define our connection string
+        """
+        FIXME: We are catching the exceptions but only logging. We do not
+              reraise the exception. The code will continue to run without a database
+              connection.
+        """
+
         conn_string = (
-            "host='localhost' dbname='"
-            + self.dbname
-            + "' user='"
-            + cfg.sql_name
-            + "' password='"
-            + cfg.sql_password
-            + "'"
+            f"host='localhost' dbname='{self.dbname}' "
+            f"user='{config.sql_name}' password='{config.sql_password}'"
         )
 
-        # logging.info the connection string we will use to connect
-        logging.info("Connecting to database\n	->%s" % (conn_string))
+        logging.info(f"Connecting to database\n	->{conn_string}")
 
-        # get a connection, if a connect cannot be made an exception will be raised here
         try:
             # conn.cursor will return a cursor object, you can use this cursor to perform queries
             conn = psycopg2.connect(conn_string)
@@ -51,62 +70,53 @@ class Store_Seperately:
             try:
                 cursor.execute(query1)
                 conn.commit()
-            except:
-                logging.error("Drop Schema Failed!\n")
+            except Exception as e:
+                logging.error(f"Drop schema failed due to error {e}")
             try:
                 cursor.execute(query2)
                 conn.commit()
-            except:
-                logging.error("Create Schema Failed!\n")
+            except Exception as e:
+                logging.error(f"Creation of schema failed due to error {e}")
             cursor.close()
             conn.close()
-            return True
+        except Exception as e:
+            logging.info(f"Connection to database failed due to error {e}")
 
-        except:
-            logging.info("Connecting Database Failed!\n")
-            return False
+    def insert_table_separately(self, idi, new_table):
 
-    def __init__(self, dbname, time_flag):
-
-        self.dbname = dbname
-        self.__connect2db_init()
-        logging.info("heresss")
-        self.eng = self.__connect2db()
-        self.time_flag = time_flag
-        self.Variable = []
-        self.update_time = 0
-
-    def InsertTable_Sperately(self, idi, new_table):
-
-        if self.time_flag == True:
+        if self.time_flag:
             start_time = timeit.default_timer()
 
         new_table.to_sql(
-            name="rtable" + str(idi),
+            name=f"rtable{idi}",
             con=self.eng,
             schema="rowstore",
             if_exists="fail",
             index=False,
         )
-        self.Variable.append(idi)
+        self.variable.append(idi)
 
-        if self.time_flag == True:
+        if self.time_flag:
             end_time = timeit.default_timer()
             logging.info(end_time - start_time)
 
-    def Query_Tables_Times(self, vid):
+    def query_tables_times(self, vid):
+        """
+        FIXME: Unused function. Delete? Unused parameter `vid`.
+        """
+
         eng = psycopg2.connect(
             "dbname="
             + self.dbname
             + " user='"
-            + cfg.sql_name
+            + config.sql_name
             + "' password='"
-            + cfg.sql_password
+            + config.sql_password
             + "'"
         )
         cur = eng.cursor(cursor_factory=PreparingCursor)
         time_total = []
-        for var in self.Variable:
+        for var in self.variable:
             cur.prepare("select * from rowstore.rtable" + str(var) + ";")
             delta_time_array = []
             for i in range(10):
@@ -122,7 +132,7 @@ class Store_Seperately:
         eng.close()
         return float(np.mean(time_total))
 
-    def Query_Storage_Size(self):
+    def query_storage_size(self):
         eng = self.__connect2db()
         mediate_tables = eng.execute(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'rowstore';"
@@ -144,30 +154,28 @@ class Store_Seperately:
     def close_dbconnection(self):
         self.eng.close()
 
-    def Update_Data(self, idi, new_table, vid):
+    def update_data(self, idi, new_table, vid):
         start_time = timeit.default_timer()
         self.eng = self.__connect2db()
         nflg = True
         try:
-            old_table = pd.read_sql_table(
-                "rtable" + str(idi), self.eng, schema="rowstore"
-            )
+            old_table = pd.read_sql_table(f"rtable{idi}", self.eng, schema="rowstore")
         except:
             old_table = None
             nflg = False
 
-        if nflg == False:
+        if not nflg:
             new_table.to_sql(
-                name="rtable" + str(idi) + "_" + str(vid),
+                name=f"rtable{idi}_{vid}",
                 con=self.eng,
                 index=False,
                 schema="rowstore",
                 if_exists="replace",
             )
         else:
-            if new_table.equals(old_table) == False:
+            if not new_table.equals(old_table):
                 new_table.to_sql(
-                    name="rtable" + str(idi) + "_" + str(vid),
+                    name=f"rtable{idi}_{vid}",
                     con=self.eng,
                     index=False,
                     schema="rowstore",

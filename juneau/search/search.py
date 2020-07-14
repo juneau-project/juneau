@@ -1,32 +1,13 @@
 import json
 import logging
-import sys
-from sys import getsizeof
-
-if sys.version_info[0] < 3:
-    pass
-else:
-    pass
 
 special_type = ["np", "pd"]
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 
-def _getsizeof(x):
-    # return the size of variable x. Amended version of sys.getsizeof
-    # which also supports ndarray, Series and DataFrame
-    if type(x).__name__ in ["ndarray", "Series"]:
-        return x.nbytes
-    elif type(x).__name__ == "DataFrame":
-        return x.memory_usage().sum()
-    else:
-        return getsizeof(x)
-
-
 def search_tables(search_test, var_df, mode, code, var_name):
-    query_table = var_df  # dataframe
-    query_name = var_name  # name of the table
+    query_table = var_df
 
     if mode == 1:
         logging.info("Search for Additional Training/Validation Tables!")
@@ -49,10 +30,10 @@ def search_tables(search_test, var_df, mode, code, var_name):
         )
         logging.info("%s Tables are returned!" % len(tables))
 
-    if len(tables) == 0:
+    if not tables:
         return ""
     else:
-        vardic = [
+        metadata = [
             {
                 "varName": v[0],
                 "varType": type(v[1]).__name__,
@@ -66,5 +47,5 @@ def search_tables(search_test, var_df, mode, code, var_name):
                 ),
             }
             for v in tables
-        ]  # noqa
-        return json.dumps(vardic)
+        ]
+        return json.dumps(metadata)

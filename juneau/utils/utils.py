@@ -16,6 +16,8 @@
 A series of utility functions used throughout Juneau.
 """
 
+from sys import getsizeof
+
 
 def clean_notebook_name(nb_name):
     """
@@ -36,3 +38,16 @@ def clean_notebook_name(nb_name):
         nb_name = nb_name[-2:]
     nb_name = "".join(nb_name)
     return nb_name[-25:]
+
+
+def _getsizeof(x):
+    """
+    Gets the size of a variable `x`. Amended version of sys.getsizeof
+    which also supports ndarray, Series and DataFrame.
+    """
+    if type(x).__name__ in ["ndarray", "Series"]:
+        return x.nbytes
+    elif type(x).__name__ == "DataFrame":
+        return x.memory_usage().sum()
+    else:
+        return getsizeof(x)

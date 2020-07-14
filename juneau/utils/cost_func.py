@@ -196,7 +196,7 @@ def return_union_row(tableA, tableB):
             return compute_table_size(tableA), 1
 
 
-def Pickup_BestTable(tablestorage, tableA, cost_flag):
+def pickup_best_table(tablestorage, tableA, cost_flag):
     if len(tablestorage.items()) == 0:
         return None
 
@@ -243,7 +243,7 @@ def Pickup_BestTable(tablestorage, tableA, cost_flag):
             )
 
 
-def Pickup_BestTable_UnionRow(tablestorage, tableA):
+def pickup_best_table_union_row(tablestorage, tableA):
     rank_table_to_merge = []
     tablestorage2 = []
     tablename = []
@@ -319,7 +319,7 @@ def compute_table_size_unique_each_col(table):
 
 
 def cost_func_store_with_union_row(table, table_df_full):
-    table_id, storage_benefit = Pickup_BestTable_UnionRow(table_df_full, table)
+    table_id, storage_benefit = pickup_best_table_union_row(table_df_full, table)
     query_time = 0.01 * float(table.shape[0])
     if storage_benefit > 0:
         storage_cost = (
@@ -356,7 +356,7 @@ def cost_func_store_lineage(running_time, code):
 
 
 def cost_func_store_with_join_row(table, table_df_full):
-    table_id, join_key, storage_benefit = Pickup_BestTable(table_df_full, table, True)
+    table_id, join_key, storage_benefit = pickup_best_table(table_df_full, table, True)
     query_time = 0.01 * float(table.shape[0])
     storage_cost = compute_table_size(table) - storage_benefit + 4 * table.shape[0]
     return (
@@ -367,7 +367,7 @@ def cost_func_store_with_join_row(table, table_df_full):
 
 
 def cost_func_store_with_join_col(table, table_df_full):
-    table_id, join_key, storage_benefit = Pickup_BestTable(table_df_full, table, True)
+    table_id, join_key, storage_benefit = pickup_best_table(table_df_full, table, True)
     query_time = 0.01 * float(sum(table.count()))
     storage_cost = float(sum(table.count()) * 4) + compute_table_size_unique_each_col(
         table
