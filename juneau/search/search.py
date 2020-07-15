@@ -28,16 +28,14 @@ def search_tables(search_test, var_df, mode, code, var_name):
         tables = search_test.search_additional_training_data(
             query_table, 10, code, var_name, 0.5, 1
         )
-        # tables = search_test.search_similar_tables_threshold2(query_table, 0.5, 10, 1.5, 0.9, 0.2)
         logging.info("%s Tables are returned!" % len(tables))
-        # tables = search_test.search_similar_tables_threshold2(query_table, 10, 0.5, 5, 1, 0.9, 0.2, True, 10)
     elif mode == 2:
         logging.info("Search for Joinable Tables!")
         tables = search_test.search_joinable_tables_threshold2(
             query_table, 0.1, 10, 1.5, 0.9, 0.2
         )
         logging.info("%s Joinable Tables are returned!" % len(tables))
-    elif mode == 3:
+    else:
         logging.info("Search for Alternative Feature Tables!")
         tables = search_test.search_alternative_features(
             query_table, 10, code, var_name, 90, 200, 0.1, 10, 0.9, 0.2
