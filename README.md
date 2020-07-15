@@ -1,7 +1,7 @@
 # The Juneau Project
 
 [![<juneau-project>](https://circleci.com/<gh>/<juneau-project>/<juneau>.svg?style=svg)](<https://app.circleci.com/pipelines/github/juneau-project>)
-
+ 
 The past decade has brought a sea change in the availability of data. Instead of a world in which we have small number of carefully curated data sources in a centralized database -- instead we have a plethora of datasets, data versions, and data representations that span users, groups, and organizations. Devices and data acquisition tools make it easy to acquire new data, cloud hosting makes it easy to centralize and share files, and cloud data analytics and machine learning tools have driven a desire to integrate and extract value from that data.
 
 What is missing is management tools to centralize and capture such data resources. Data scientists often end up doing redundant work because they have no effective way of finding appropriate resources to reuse and retarget to new applications.
