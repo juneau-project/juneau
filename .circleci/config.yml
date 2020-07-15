@@ -12,9 +12,9 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
-          command: |
-            pip install -e .[dev]
-            pytest
+          command: pip install -e .[dev]
+      - run:
+          command: pytest
 
 workflows:
   main:
