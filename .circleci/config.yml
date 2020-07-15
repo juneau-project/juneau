@@ -7,13 +7,14 @@ jobs:
   build-and-test:
     executor: python/default
     steps:
-      - checkout
+      - checkout  # checkout source code to working directory
       - python/load-cache
       - python/install-deps
       - python/save-cache
       - run:
-          command: pytest
-          name: Test
+          command: |
+            pip install -e .[dev]
+            pytest
 
 workflows:
   main:
