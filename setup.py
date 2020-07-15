@@ -38,8 +38,9 @@ setup(
         "notebook",
     ],
     extras_require={
-        'dev': [
-            'black'
+        "dev": [
+            "black",
+            "pytest"
         ]
     },
     zip_safe=False,
