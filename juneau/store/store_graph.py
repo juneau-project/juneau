@@ -21,6 +21,7 @@ import logging
 
 import pandas as pd
 from py2neo import Node, Relationship, NodeMatcher
+from juneau import config
 
 
 class ProvenanceStorage:
@@ -34,9 +35,9 @@ class ProvenanceStorage:
         TODO: Explain what this function does.
         """
 
-        query1 = "DROP SCHEMA IF EXISTS nb_provenance CASCADE;"
-        query2 = "CREATE SCHEMA nb_provenance;"
-        query3 = "CREATE TABLE nb_provenance.code_dict (code VARCHAR(1000), cell_id INTEGER);"
+        query1 = "DROP SCHEMA IF EXISTS " + config.sql_provenance + " CASCADE;"
+        query2 = "CREATE SCHEMA " + config.sql_provenance + ";"
+        query3 = "CREATE TABLE " + config.sql_provenance + ".code_dict (code VARCHAR(1000), cell_id INTEGER);"
 
         with self.postgres_eng.connect() as conn:
             try:
@@ -62,7 +63,7 @@ class ProvenanceStorage:
         with self.postgres_eng.connect() as conn:
             try:
                 code_table = pd.read_sql_table(
-                    "code_dict", conn, schema="nb_provenance"
+                    "code_dict", conn, schema=config.sql_provenance
                 )
                 for index, row in code_table.iterrows():
                     self.code_dict[row["code"]] = int(row["cell_id"])
@@ -83,7 +84,7 @@ class ProvenanceStorage:
         dict_store_code = pd.DataFrame.from_dict(dict_store)
         with self.postgres_eng.connect() as conn:
             dict_store_code.to_sql(
-                "code_dict", conn, schema="nb_provenance", if_exists="replace"
+                "code_dict", conn, schema=config.sql_provenance, if_exists="replace", index=False
             )
 
     def add_cell(self, code, prev_node, var, cell_id, nb_name):

@@ -26,14 +26,21 @@ def create_tables_as_needed(engine, eng):
     eng.execute("create schema if not exists " + config.sql_provenance + ";")
 
     eng.execute(
-        "CREATE TABLE IF NOT EXISTS graph_model.dependen ("
+        "CREATE TABLE IF NOT EXISTS " + config.sql_graph + ".dependen ("
         + "view_id character varying(1000),"
         + "view_cmd text"
         + ");"
     )
 
     eng.execute(
-        "CREATE TABLE IF NOT EXISTS graph_model.line2cid ("
+        "CREATE TABLE IF NOT EXISTS " + config.sql_graph + ".line2cid ("
+        + "view_id character varying(1000),"
+        + "view_cmd text"
+        + ");"
+    )
+
+    eng.execute(
+        "CREATE TABLE IF NOT EXISTS " + config.sql_graph + ".lastliid ("
         + "view_id character varying(1000),"
         + "view_cmd text"
         + ");"
@@ -193,7 +200,7 @@ def fetch_all_table_names(schema, eng):
 
 
 def fetch_all_views(eng):
-    tables = eng.execute("select table_name from INFORMATION_SCHEMA.views;")
+    tables = eng.execute("select table_name from information_schema.views;")
     views = []
     for rows in tables:
         t_name = rows[0]

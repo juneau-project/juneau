@@ -35,13 +35,17 @@ def main(kid):
     km.load_connection_file()
     km.start_channels()
 
-    # FIXME: Why are we defining the function if we are not calling it?
+    # Define a function that is useful from within the user's notebook: juneau_connect() can be
+    # used to directly connect the notebook to the source database.  Note that this includes the
+    # full "root" credentials.
+
+    # FIXME: allow for user-specific credentials on SQL tables.  The DBMS may also not be at localhost.
     code = f"""
         from sqlalchemy import create_engine
         
         def juneau_connect():
             engine = create_engine(
-                "postgresql://{config.sql_name}:{config.sql_password}@localhost/{config.sql_dbname}",
+                "postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{config.sql_dbname}",
                 connect_args={{ 
                     "options": "-csearch_path='{config.sql_dbs}'" 
                 }}
