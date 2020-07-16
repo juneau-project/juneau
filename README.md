@@ -45,7 +45,7 @@ Now edit the settings in `juneau/config.py` to match your password and account i
 
 ### Sample data lake corpus
 
-Next, download [juneau_start.zip](https://drive.google.com/file/d/1m66VqfEKSUyzwxVL9OAZM0A91BLhDh9w/view?usp=sharing) and unzip it.
+Next, download [juneau_start.zip](https://slack-files.com/T239LE4BH-F017E751CR2-dc5d4c5c86) and unzip it.
 
 For the Docker container, you can import as follows:
 * Run `./neo4j-update.sh`
@@ -63,5 +63,5 @@ See the [Developer's Guide](docs/Developers.md) for details.
 
 * `sudo -H python setup.py install`
 * `sudo -H jupyter serverextension enable --py juneau`
-* `jupyter nbextension install dataset_inspector/ --user`
-* `jupyter nbextension enable dataset_inspector/main --user`
+* `jupyter nbextension install static / --user`
+* `jupyter nbextension enable static/main --user`
