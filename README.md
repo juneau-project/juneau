@@ -45,10 +45,14 @@ Now edit the settings in `juneau/config.py` to match your password and account i
 
 ### Sample data lake corpus
 
-Next, download sample_data.zip and unzip it.
+Next, download [juneau_start.zip](https://drive.google.com/file/d/1m66VqfEKSUyzwxVL9OAZM0A91BLhDh9w/view?usp=sharing) and unzip it.
 
-* `neo4j-admin load --database=graph.db --from=juneauG.dump --force`
-* `psql -h localhost -u postgres < juneauD.pgsql`
+For the Docker container, you can import as follows:
+* Run `./neo4j-update.sh`
+
+Otherwise, you can use:
+* `neo4j-admin load --database=data.db --from=juneauG.dump --force`
+* `psql -h localhost -U postgres < juneauD.pgsql`
 
 ### Install Jupyter Notebook extensions
 
