@@ -86,6 +86,9 @@ class WithProv_Optimized(WithProv):
             # Graph = self.__generate_graph(nid, dependency_store[nid], line2cid_store[nid])
             # print(Graph)
             try:
+                if nid not in lastliid_store:
+                    continue
+
                 line_id = lastliid_store[nid]
 
                 if line_id == 0:
@@ -112,7 +115,8 @@ class WithProv_Optimized(WithProv):
                 if Graph.has_node(query_name):
                     query_node = pre_vars(query_name, Graph)
                     Graphs[nid] = query_node
-            except:
+            except Exception as e:
+                print(str(e))
                 logging.error(
                     "Can not generate the graph  "
                     + str(id)

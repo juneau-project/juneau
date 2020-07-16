@@ -54,7 +54,12 @@ Otherwise, you can use:
 * `neo4j-admin load --database=data.db --from=juneauG.dump --force`
 * `psql -h localhost -U postgres < juneauD.pgsql`
 
+And finally you need to edit the `neo4j.conf` file to set the database
+to `data.db`.
+
 ### Install Jupyter Notebook extensions
+
+See the [Developer's Guide](docs/Developers.md) for details.
 
 * `sudo -H python setup.py install`
 * `sudo -H jupyter serverextension enable --py juneau`

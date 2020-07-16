@@ -1,6 +1,6 @@
 sql_name = "postgres"
 sql_password = "habitat1"
-sql_dbname = "juneau"
+sql_dbname = "postgres"
 sql_host = "localhost"
 sql_graph = "graph_model"
 sql_provenance = "nb_provenance"
