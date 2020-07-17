@@ -171,7 +171,7 @@ class JuneauHandler(IPythonHandler):
                 except Exception as e:
                     logging.error(f"Unable to store in graph store due to error {e}")
 
-                self.store_table(output, store_table_name, cleaned_nb_name)
+                self.store_table(output, store_table_name)
 
             else:
                 logging.error("find variable failed!")
@@ -200,17 +200,12 @@ class JuneauHandler(IPythonHandler):
                 self.data_trans = {"error": output, "state": False}
                 self.write(json.dumps(self.data_trans))
 
-    def store_table(self, output, store_table_name, var_nb_name):
+    def store_table(self, output, store_table_name):
         """
         Asynchronously stores a table into the database.
 
         Notes:
             This is the refactored version of `fn`.
-
-        Args:
-            output:
-            store_table_name:
-            var_nb_name:
 
         """
         logging.info(f"Indexing new table {store_table_name}")
