@@ -1,3 +1,21 @@
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+TODO: Explain what this module does.
+"""
+
 import ast
 import json
 import logging
@@ -27,9 +45,9 @@ class WithProv_Optimized(WithProv):
 
         logging.info("Data Search Extension Prepared!")
 
-    def approximate_join_key(self, tableA, tableB, SM, key, thres_prune):
-
-        kyA = key
+    # FIXME: This code is duplicated in search_tables.py
+    @staticmethod
+    def approximate_join_key(tableA, tableB, SM, key, thres_prune):
         key_value_A = tableA[key].tolist()
         scoreA = float(len(set(key_value_A))) / float(len(key_value_A))
         if scoreA == 1:
@@ -60,13 +78,13 @@ class WithProv_Optimized(WithProv):
         return max(key_scoreAB, key_scoreBA)
 
     def read_graph_of_notebook(self):
-        Graphs = {}
+        graphs = {}
         dependency = pd.read_sql_table(
             "dependen", self.eng, schema=cfg.sql_graph
-        )  # , schema='graph_model')
+        )
         line2cid = pd.read_sql_table(
             "line2cid", self.eng, schema=cfg.sql_graph
-        )  # , schema='graph_model')
+        )
         lastliid = pd.read_sql_table("lastliid", self.eng, schema=cfg.sql_graph)
 
         dependency_store = {}
@@ -82,9 +100,7 @@ class WithProv_Optimized(WithProv):
         for index, row in lastliid.iterrows():
             lastliid_store[row["view_id"]] = json.loads(row["view_cmd"])
 
-        for id, nid in enumerate(dependency_store.keys()):
-            # Graph = self.__generate_graph(nid, dependency_store[nid], line2cid_store[nid])
-            # print(Graph)
+        for idx, nid in enumerate(dependency_store.keys()):
             try:
                 if nid not in lastliid_store:
                     continue
@@ -103,29 +119,16 @@ class WithProv_Optimized(WithProv):
                     continue
 
                 var_name = "_".join(nid.split("_")[1:-1])
-                query_name = (
-                    "var_"
-                    + var_name
-                    + "_"
-                    + str(line2cid_store[nid][str(line_id)])
-                    + "_"
-                    + str(nid_name)
-                )
-
+                query_name = f"var_{var_name}_{line2cid_store[nid][str(line_id)]}_{nid_name}"
                 if Graph.has_node(query_name):
                     query_node = pre_vars(query_name, Graph)
-                    Graphs[nid] = query_node
+                    graphs[nid] = query_node
             except Exception as e:
-                print(str(e))
                 logging.error(
-                    "Can not generate the graph  "
-                    + str(id)
-                    + " "
-                    + str(sys.exc_info()[0])
-                    + " !"
+                    f"Can not generate the graph {idx} due to error {e}"
                 )
 
-        return Graphs, line2cid_store
+        return graphs, line2cid_store
 
     def __generate_query_node_from_code(self, var_name, code):
 
@@ -148,7 +151,8 @@ class WithProv_Optimized(WithProv):
         query_node = pre_vars(query_name, graph)
         return query_node
 
-    def __generate_graph(self, nid, dependency, line2cid):
+    @staticmethod
+    def __generate_graph(nid, dependency, line2cid):
         G = nx.DiGraph()
         for i in dependency.keys():
             left = dependency[i][0]
@@ -156,36 +160,30 @@ class WithProv_Optimized(WithProv):
             pair_dict = {}
             right = []
             for pa, pb in dependency[i][1]:
-                if pa + ";" + pb not in pair_dict:
-                    pair_dict[pa + ";" + pb] = 0
+                if f"{pa};{pb}" not in pair_dict:
+                    pair_dict[f"{pa};{pb}"] = 0
                     right.append([pa, pb])
 
             left_node = []
             for ele in left:
                 if type(ele) is tuple or type(ele) is list:
                     ele = ele[0]
-                left_node.append("var_" + ele + "_" + str(line2cid[i]) + "_" + str(nid))
-            # print('left',left_node)
+                left_node.append(f"var_{ele}_{line2cid[i]}_{nid}")
 
             for ele in left:
                 if type(ele) is tuple or type(ele) is list:
                     ele = ele[0]
 
-                new_node = "var_" + ele + "_" + str(line2cid[i]) + "_" + str(nid)
+                new_node = f"var_{ele}_{line2cid[i]}_{nid}"
 
                 G.add_node(new_node, cell_id=line2cid[i], line_id=i, var=ele)
 
-                # print(nbname)
-                # print(right)
                 for dep, ename in right:
                     candidate_list = G.nodes
                     rankbyline = []
                     for cand in candidate_list:
-                        # print('cand', cand)
-
                         if G.nodes[cand]["var"] == dep:
                             if cand in left_node:
-                                # print(cand)
                                 continue
                             rankbyline.append((cand, int(G.nodes[cand]["line_id"])))
                     rankbyline = sorted(rankbyline, key=lambda d: d[1], reverse=True)
@@ -207,6 +205,7 @@ class WithProv_Optimized(WithProv):
 
         return G
 
+    # FIXME: Duplicated code in store_prov.py
     @staticmethod
     def __parse_code(code_list):
 
@@ -262,7 +261,8 @@ class WithProv_Optimized(WithProv):
         test.visit(tree)
         return test.dependency, line2cid, all_code
 
-    def __last_line_var(self, varname, code):
+    @staticmethod
+    def __last_line_var(varname, code):
         ret = 0
         code = code.split("\n")
         for id, i in enumerate(code):
@@ -597,24 +597,6 @@ class WithProv_Optimized(WithProv):
             table_prov_score["rtable" + i.lower()] = j
 
         logging.info(table_prov_score)
-        # if i[:3] != "var":
-        #     continue
-        #
-        # t = i.split("_")
-        #
-        # nid = t[-1]
-        #
-        # if (nid not in self.n_l2cid):
-        #     print("notebook" + str(nid) + " does not exist")
-        #
-        # vname = '_'.join(t[1:-2])
-        #
-        # if (t[-2] not in self.n_l2cid[nid]):
-        #     continue
-        #
-        # cid = int(self.n_l2cid[nid][t[-2]])
-        #
-        # table_prov_score["rtable" + str(cid) + "_" + vname.lower() + "_" + str(nid)] = j
 
         top_tables = []
         rank_candidate = []
@@ -785,11 +767,7 @@ class WithProv_Optimized(WithProv):
                     top_tables = sorted(top_tables, key=lambda d: d[1], reverse=True)
                     min_value = top_tables[ks][1]
 
-        # logging.info("Schema Mapping Costs: %s Seconds" % time1)
-        # logging.info("Full Search Costs: %s Seconds" % time3)
-
         rtables_names = self.remove_dup(top_tables, ks)
-
         rtables = []
         for i, j in rtables_names:
             rtables.append((i, self.real_tables[i]))
