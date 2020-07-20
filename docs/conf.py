@@ -20,6 +20,7 @@
 project = 'juneau'
 copyright = '2020, Zachary G. Ives, Yi Zhang'
 author = 'Zachary G. Ives, Yi Zhang'
+master_doc = 'index'
 
 
 # -- General configuration ---------------------------------------------------
