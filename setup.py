@@ -40,7 +40,8 @@ setup(
     extras_require={
         "dev": [
             "black",
-            "pytest"
+            "pytest",
+            "m2r2"
         ]
     },
     zip_safe=False,

@@ -26,8 +26,6 @@ This schema tracks the line-to-line dependencies.
 
 Stores the actual variable content, ie the tables, using a canonical naming scheme
 
-# `rtable`{id}
-
 ## Neo4J
 
 Stores the cells themselves, including cell to cell relationships

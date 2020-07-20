@@ -1,8 +1,3 @@
-# Installing
-
-Run `pip install -e .[dev]` to get all the production
-requirements plus the development requirements (testing, linting, etc.)
-
 # Brief Developers' Guide to Juneau
 
 Juneau consists of three components executing at runtime:
@@ -11,6 +6,23 @@ Juneau consists of three components executing at runtime:
 2. The kernel (running its own Python interpreter) -- to which we will sometimes send commands via the server extension.
 3. The client (with GUI widgets) running in the browser.
 
+
+## Installing
+
+Run `pip install -e .[dev]` to get all the production
+requirements plus the development requirements (testing, linting, etc.)
+
+## Docs
+
+Documentation uses [Sphinx](https://www.sphinx-doc.org/en/master/) and
+[m2r2](https://github.com/CrossNox/m2r2) to convert Markdown to restructured text.
+To make changes to the docs, edit the markdown files and run 
+
+```
+make html
+```
+
+in the `docs` folder.
 
 ## Configuration
 
