@@ -2,7 +2,7 @@
 
 Juneau consists of three components executing at runtime:
 
-1. The server extension (running inside Tornado alongside Jupyter Notebook.
+1. The server extension (running inside Tornado alongside Jupyter Notebook).
 2. The kernel (running its own Python interpreter) -- to which we will sometimes send commands via the server extension.
 3. The client (with GUI widgets) running in the browser.
 
@@ -10,7 +10,7 @@ Juneau consists of three components executing at runtime:
 ## Installing
 
 Run `pip install -e .[dev]` to get all the production
-requirements plus the development requirements (testing, linting, etc.)
+requirements plus the development requirements (testing, linting, etc).
 
 ## Docs
 
@@ -51,16 +51,16 @@ The `post` method in the handler is invoked during search; `put` is called when 
 To index a table, we invoke the **kernel** with the name of the variable, and hope to get back a JSON version of the variable.  We then store it in the Juneau PostgreSQL schema, using Pandas.
 
 ```
-HTTP request --> put(table_var_name) --jupyter.request_var--> kernel
+HTTP request --> put(table_var_name) --> jupyter.request_var --> kernel
 
-SQLAlchemy<--Pandas<--fn<--JSON--kernel
+SQLAlchemy <-- Pandas <-- store_table <-- JSON -- kernel
 Store_Provenance
 Store_Lineage
 ````
 
 First we need to fetch the variable (`find_variable`), which is done through the `jupyter.request_var` method.  This sends a blocking request to the kernel, which retrieves the variable as a JSON object.
 
-The table is stored in the server extension, after it is given a unique name based on the variable, cell, notebook, etc.  We us an async method (`fn`) to do the actual storage.
+The table is stored in the server extension, after it is given a unique name based on the variable, cell, notebook, etc.  We us an async method (`store_table`) to do the actual storage.
 
 ### Post: Search
 
@@ -77,4 +77,4 @@ Several Python files are used to communicate with the kernel.  These include:
 
 ## User Interface
 
-The user interface is a separate client-side extension in Javascript.  See `dataset_inspector/main.js`.
+The user interface is a separate client-side extension in Javascript.  See `static/main.js`.
