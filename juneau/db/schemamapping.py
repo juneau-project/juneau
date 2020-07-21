@@ -34,7 +34,7 @@ class SchemaMapping:
         inter = len(np.intersect1d(colA, colB))
         return float(inter) / float(union)
 
-    def mapping_naive(self, tableA, tableB, mapped={}):
+    def mapping_naive(self, tableA, tableB, mapped=None):
 
         start_time = timeit.default_timer()
         time1 = 0
@@ -75,14 +75,9 @@ class SchemaMapping:
 
             for j in range(shmbl):
 
-                nameB = scmb[j]  # .split('_')[0].lower()
-                if nameB in MpairR:
-                    continue
-
-                if nameB == "Unnamed: 0" or "index" in nameB:
-                    continue
-
-                if tableA[scma[i]].dtype != tableB[scmb[j]].dtype:
+                nameB = scmb[j]
+                if nameB in MpairR or nameB == "Unnamed: 0" or "index" in nameB or \
+                        tableA[scma[i]].dtype != tableB[scmb[j]].dtype:
                     continue
 
                 colB = tableB[scmb[j]][~pd.isnull(tableB[scmb[j]])].values
@@ -260,10 +255,7 @@ class SchemaMapping:
             for i in range(shmal):
 
                 nameA = scma[i]
-                if nameA == "Unnamed: 0" or "index" in nameA:
-                    continue
-
-                if nameA not in valid_keys:
+                if nameA == "Unnamed: 0" or "index" in nameA or nameA not in valid_keys:
                     continue
 
                 if nameA not in acol_set:
@@ -385,13 +377,7 @@ class SchemaMapping:
                             colB = colB
 
                     s1 = timeit.default_timer()
-
-                    try:
-                        sim_col = self.jaccard_similarity(colA, colB)
-                    except:
-                        print(colA)
-                        print(colB)
-
+                    sim_col = self.jaccard_similarity(colA, colB)
                     if sim_col < self.sim_thres:
                         unmatched[group][nameA][nameB] = ""
 
@@ -469,7 +455,6 @@ class SchemaMapping:
     # Do schema mapping on Groups
     def mapping_naive_groups(self, tableA, tableA_valid, schema_element):
 
-        start_time = timeit.default_timer()
         time1 = 0
 
         Mpair = {}
@@ -488,23 +473,12 @@ class SchemaMapping:
             for i in range(shmal):
 
                 nameA = scma[i]
-                if nameA not in tableA_valid:
-                    continue
-
-                if nameA == "Unnamed: 0" or "index" in nameA:
+                if nameA not in tableA_valid or nameA == "Unnamed: 0" or "index" in nameA:
                     continue
 
                 colA = tableA[scma[i]][~pd.isnull(tableA[scma[i]])].values
                 if nameA not in acol_set:
                     acol_set[nameA] = list(set(colA))
-
-                # try:
-                #    colA = colA[~np.isnan(colA)]
-                # except:
-                #    try:
-                #        colA = colA[colA != np.array(None)]
-                #    except:
-                #        colA = colA
 
                 for j in schema_element[group].keys():
 
@@ -536,7 +510,5 @@ class SchemaMapping:
                 continue
             else:
                 group_list.append(group)
-
-        end_time = timeit.default_timer()
 
         return group_list
