@@ -498,7 +498,6 @@ class SchemaMapping:
                     sim_col = self.jaccard_similarity(acol_set[nameA], colB)
                     e1 = timeit.default_timer()
                     time1 += e1 - s1
-                    # c1 += 1
                     matching.append((nameA, nameB, sim_col))
 
             matching = sorted(matching, key=lambda d: d[2], reverse=True)

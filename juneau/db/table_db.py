@@ -1,3 +1,21 @@
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+TODO: Explain what this module does.
+"""
+
 import ast
 import queue
 
@@ -13,117 +31,69 @@ from sqlalchemy.orm import sessionmaker
 
 def create_tables_as_needed(engine, eng):
     """
-    Creates the PostgreSQL schema and Juneau's metadata tables, if necessary
-
-    :param eng: SQL engine
+    Creates the PostgreSQL schema and Juneau's metadata tables, if necessary.
     """
     # Open the session
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    eng.execute("create schema if not exists " + config.sql_dbs + ";")
-    eng.execute("create schema if not exists " + config.sql_graph + ";")
-    eng.execute("create schema if not exists " + config.sql_provenance + ";")
+    eng.execute(f"create schema if not exists {config.sql_dbs};")
+    eng.execute(f"create schema if not exists {config.sql_graph};")
+    eng.execute(f"create schema if not exists {config.sql_provenance};")
 
     eng.execute(
-        "CREATE TABLE IF NOT EXISTS " + config.sql_graph + ".dependen ("
-        + "view_id character varying(1000),"
-        + "view_cmd text"
-        + ");"
+        f"CREATE TABLE IF NOT EXISTS {config.sql_graph}.dependen (view_id character varying(1000), view_cmd text);"
     )
 
     eng.execute(
-        "CREATE TABLE IF NOT EXISTS " + config.sql_graph + ".line2cid ("
-        + "view_id character varying(1000),"
-        + "view_cmd text"
-        + ");"
+        f"CREATE TABLE IF NOT EXISTS {config.sql_graph}.line2cid (view_id character varying(1000), view_cmd text);"
     )
 
     eng.execute(
-        "CREATE TABLE IF NOT EXISTS " + config.sql_graph + ".lastliid ("
-        + "view_id character varying(1000),"
-        + "view_cmd text"
-        + ");"
+        f"CREATE TABLE IF NOT EXISTS {config.sql_graph}.lastliid (view_id character varying(1000), view_cmd text);"
     )
-    # Commit the changes
+
     session.commit()
-
-    # Close the session
     session.close()
 
 
 def connect2db(dbname):
     """
-    Connect to the PostgreSQL instance, creating it if necessary
-
-    :param dbname:
-    :return:
+    Connects to the PostgreSQL instance, creating it if necessary.
     """
     try:
         engine = create_engine(
-            "postgresql://"
-            + config.sql_name
-            + ":"
-            + config.sql_password
-            + "@"
-            + config.sql_host
-            + "/"
-            + dbname
-        )  # config.sql_dbname)
-
+            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}"
+        )
         eng = engine.connect()
         create_tables_as_needed(engine, eng)
-
         return eng
     except:
         engine = create_engine(
-            "postgresql://"
-            + config.sql_name
-            + ":"
-            + config.sql_password
-            + "@"
-            + config.sql_host
-            + "/"
+            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/"
         )
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
-        eng.execute("create database " + dbname + ";")  # '#config.sql_dbname + ';')
+        eng.execute(f"create database {dbname};")
 
         create_tables_as_needed(engine, eng)
         eng.connection.connection.set_isolation_level(1)
 
         engine = create_engine(
-            "postgresql://"
-            + config.sql_name
-            + ":"
-            + config.sql_password
-            + "@"
-            + config.sql_host
-            + "/"
-            + dbname
-        )  # config.sql_dbname)
+            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}"
+        )
         return engine.connect()
 
 
 def connect2db_engine(dbname):
     """
     Connect to the PostgreSQL instance, creating it if necessary
-
-    :param dbname:
-    :return:
     """
     try:
         engine = create_engine(
-            "postgresql://"
-            + config.sql_name
-            + ":"
-            + config.sql_password
-            + "@"
-            + config.sql_host
-            + "/"
-            + dbname,
-            isolation_level="AUTOCOMMIT",
-        )  # config.sql_dbname)
+            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}",
+            isolation_level="AUTOCOMMIT"
+        )
 
         eng = engine.connect()
         create_tables_as_needed(engine, eng)
@@ -132,107 +102,74 @@ def connect2db_engine(dbname):
         return engine
     except:
         engine = create_engine(
-            "postgresql://"
-            + config.sql_name
-            + ":"
-            + config.sql_password
-            + "@"
-            + config.sql_host
-            + "/"
+            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/"
         )
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
-        eng.execute("create database " + dbname + ";")  # '#config.sql_dbname + ';')
+        eng.execute("create database {dbname};")
 
         create_tables_as_needed(engine, eng)
         eng.connection.connection.set_isolation_level(1)
         eng.close()
 
         engine = create_engine(
-            "postgresql://"
-            + config.sql_name
-            + ":"
-            + config.sql_password
-            + "@"
-            + config.sql_host
-            + "/"
-            + dbname,
-            isolation_level="AUTOCOMMIT",
-        )  # config.sql_dbname)
+            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}",
+            isolation_level="AUTOCOMMIT"
+        )
         return engine
 
 
 def connect2gdb():
     """
-    Connect to Neo4J
-    :return:
+    Connect to Neo4J.
     """
-    graph = Graph(
-        "http://"
-        + config.neo_name
-        + ":"
-        + config.neo_password
-        + "@"
-        + config.neo_host
-        + "/db/"
-        + config.neo_db
-    )
-    return graph
+    return Graph(f"http://{config.neo_name}:{config.neo_password}@{config.neo_host}/db/{config.neo_db}")
 
 
 def fetch_all_table_names(schema, eng):
     """
-    Find all tables within a given schema
-
-    :param schema: Schema to search
-    :param eng: Engine connection
-    :return:
+    Finds all tables within a given schema.
     """
     tables = eng.execute(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema = '"
-        + schema
-        + "';"
+        f"SELECT table_name FROM information_schema.tables WHERE table_schema = '{schema}';"
     )
-    base_table_name = []
-    for tb in tables:
-        base_table_name.append(tb[0])
-    return base_table_name
+    return [table[0] for table in tables]
 
 
 def fetch_all_views(eng):
-    tables = eng.execute("select table_name from information_schema.views;")
-    views = []
-    for rows in tables:
-        t_name = rows[0]
-        if "exp_view_table" in t_name:
-            views.append(t_name)
-    return views
+    """
+    Finds all views.
+    """
+    tables = eng.execute("SELECT table_name from information_schema.views;")
+    return [table[0] for table in tables if "exp_view_table" in table[0]]
 
 
 def last_line_var(varname, code):
+    """
+    Finds the last line in the code where a variable was assigned.
+    """
     code = code.split("\n")
     ret = 0
-    for id, i in enumerate(code):
-        if "=" not in i:
-            continue
-        j = i.split("=")
-        if varname in j[0]:
-            ret = id + 1
+    for idx, line in enumerate(code, 1):
+        if "=" in line and varname in line.split("=")[0]:
+            ret = idx
     return ret
 
 
 def parse_code(all_code):
+    """
+    Parses code within a Jupyter notebook cell.
+    """
     test = FuncLister()
-    # print(all_code)
     tree = ast.parse(all_code)
-    # print(tree)
     test.visit(tree)
-    # print(test.dependency)
-
     return test.dependency
 
 
 def generate_graph(dependency):
+    """
+    Generates a dependency graph using the library networkx.
+    """
     G = nx.DiGraph()
     for i in dependency.keys():
         left = dependency[i][0]
@@ -278,6 +215,10 @@ def generate_graph(dependency):
 
 
 def pre_vars(node, graph):
+    """
+    TODO: Describe what this does.
+    FIXME: Duplicated code.
+    """
     node_list = {}
     q = queue.Queue()
     q.put(node)

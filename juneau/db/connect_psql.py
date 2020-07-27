@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-TODO: Explain what this module does.
+A module that allows the user to connect to Postgresql.
 """
 
 import logging
