@@ -25,9 +25,8 @@ def clean_notebook_name(nb_name):
     and removing underscores.
     Example:
         >>> nb = "My-Awesome-Notebook.ipynb"
-        >>> handler = JuneauHandler()
         >>> # Receive a PUT with `nb`
-        >>> print(handler._clean_notebook_name())
+        >>> print(clean_notebook_name(nb))
         >>> # prints "MyAwesomeNotebook"
     Returns:
         A string that is cleaned per the requirements above.
