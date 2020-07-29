@@ -9,7 +9,7 @@ def _jupyter_nbextension_paths():
     return [
         {
             "section": "notebook",
-            "src": "static",  # path relative to `juneau` directory
+            "src": "dataset_inspector",  # path relative to `juneau` directory
             "dest": "juneau",
             "require": "juneau/main"
         }

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-TODO: Explain what this module does.
+Helper module to create the necessary tables for Juneau to work.
 """
 
 import ast

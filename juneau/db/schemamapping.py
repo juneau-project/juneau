@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """
-TODO: Explain what this module does.
+Handling of both indexing and search which helps us
+understand the relationship between two tables.
 """
 
 import numpy as np
@@ -27,6 +28,10 @@ class SchemaMapping:
 
     @staticmethod
     def jaccard_similarity(colA, colB):
+        """
+        The Jaccard similarity between two sets A and B is defined as
+        |intersection(A, B)| / |union(A, B)|.
+        """
         if min(len(colA), len(colB)) == 0:
             return 0
         colA = np.array(colA)
@@ -56,22 +61,12 @@ class SchemaMapping:
         for i in range(shmal):
 
             nameA = scma[i]
-            if nameA in Mpair:
-                continue
-            if nameA == "Unnamed: 0" or "index" in nameA:
+            if nameA in Mpair or nameA == "Unnamed: 0" or "index" in nameA:
                 continue
 
             colA = tableA[scma[i]][~pd.isnull(tableA[scma[i]])].values
             if nameA not in acol_set:
                 acol_set[nameA] = list(set(colA))
-
-            try:
-                colA = colA[~np.isnan(colA)]
-            except:
-                try:
-                    colA = colA[colA != np.array(None)]
-                except:
-                    colA = colA
 
             for j in range(shmbl):
 
@@ -81,14 +76,7 @@ class SchemaMapping:
                     continue
 
                 colB = tableB[scmb[j]][~pd.isnull(tableB[scmb[j]])].values
-
-                try:
-                    colB = colB[~np.isnan(colB)]
-                except:
-                    try:
-                        colB = colB[colB != np.array(None)]
-                    except:
-                        colB = colB
+                colB = colB[~np.isnan(colB)]
 
                 s1 = timeit.default_timer()
                 sim_col = SchemaMapping.jaccard_similarity(acol_set[nameA], colB)
@@ -120,7 +108,7 @@ class SchemaMapping:
 
     # Do full schema mapping
     def mapping_naive_incremental(
-        self, tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped={}
+            self, tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped=None
     ):
 
         start_time = timeit.default_timer()
@@ -160,10 +148,7 @@ class SchemaMapping:
 
             nameA = scma[i]
 
-            if nameA in Mpair:
-                continue
-
-            if nameA == "Unnamed: 0" or "index" in nameA:
+            if nameA in Mpair or nameA == "Unnamed: 0" or "index" in nameA:
                 continue
 
             if nameA not in acol_set:
@@ -174,28 +159,14 @@ class SchemaMapping:
 
             for j in range(shmbl):
 
-                nameB = scmb[j]  # .split('_')[0].lower()
-                if nameB in MpairR:
-                    continue
-
-                if nameB == "Unnamed: 0" or "index" in nameB:
-                    continue
-
-                if tableA[nameA].dtype != tableB[nameB].dtype:
-                    continue
-
-                if nameB in unmatched[gid][nameA]:
+                nameB = scmb[j]
+                if nameB in MpairR or nameB == "Unnamed: 0" or "index" in nameB or \
+                        tableA[nameA].dtype != tableB[nameB].dtype or nameB in unmatched[gid][nameA]:
                     continue
 
                 colB = tableB[scmb[j]][~pd.isnull(tableB[scmb[j]])].values
 
-                try:
-                    colB = colB[~np.isnan(colB)]
-                except:
-                    try:
-                        colB = colB[colB != np.array(None)]
-                    except:
-                        colB = colB
+                colB = colB[~np.isnan(colB)]
 
                 s1 = timeit.default_timer()
                 sim_col = self.jaccard_similarity(colA, colB)
@@ -228,12 +199,11 @@ class SchemaMapping:
 
         end_time = timeit.default_timer()
         time_total = end_time - start_time
-        # print('full schema mapping: ', time_total)
         return Mpair, meta_mapping, unmatched, time_total
 
     # Do schema mapping for tables when looking for similar tables
     def mapping_naive_tables(
-        self, tableA, valid_keys, schema_element, schema_dtype, tflag=False
+            self, tableA, valid_keys, schema_element, schema_dtype, tflag=False
     ):
 
         start_time = timeit.default_timer()
@@ -275,13 +245,7 @@ class SchemaMapping:
                     if schema_dtype[group][j] is not tableA[nameA].dtype:
                         continue
 
-                    try:
-                        colB = colB[~np.isnan(colB)]
-                    except:
-                        try:
-                            colB = colB[colB != np.array(None)]
-                        except:
-                            colB = colB
+                    colB = colB[~np.isnan(colB)]
 
                     s1 = timeit.default_timer()
 
@@ -299,8 +263,8 @@ class SchemaMapping:
                     break
                 else:
                     if (
-                        matching[i][0] not in Mpair[group]
-                        and matching[i][1] not in MpairR[group]
+                            matching[i][0] not in Mpair[group]
+                            and matching[i][1] not in MpairR[group]
                     ):
                         Mpair[group][matching[i][0]] = matching[i][1]
                         MpairR[group][matching[i][1]] = matching[i][0]
@@ -314,14 +278,14 @@ class SchemaMapping:
 
     # Do schema mapping for tables when looking for joinable tables
     def mapping_naive_tables_join(
-        self,
-        tableA,
-        valid_keys,
-        schema_element_sample,
-        schema_element,
-        schema_dtype,
-        unmatched,
-        tflag=False,
+            self,
+            tableA,
+            valid_keys,
+            schema_element_sample,
+            schema_element,
+            schema_dtype,
+            unmatched,
+            tflag=False,
     ):
 
         start_time = timeit.default_timer()
@@ -367,14 +331,7 @@ class SchemaMapping:
                         continue
 
                     colB = np.array(schema_element[group][nameB])
-
-                    try:
-                        colB = colB[~np.isnan(colB)]
-                    except:
-                        try:
-                            colB = colB[colB != np.array(None)]
-                        except:
-                            colB = colB
+                    colB = colB[~np.isnan(colB)]
 
                     s1 = timeit.default_timer()
                     sim_col = self.jaccard_similarity(colA, colB)
@@ -394,22 +351,12 @@ class SchemaMapping:
                     continue
 
                 colB = np.array(schema_element_sample[group][nameB])
-
-                try:
-                    colB = colB[~np.isnan(colB)]
-                except:
-                    try:
-                        colB = colB[colB != np.array(None)]
-                    except:
-                        colB = colB
+                colB = colB[~np.isnan(colB)]
 
                 for j in range(shmal):
 
                     nameA = scma[j]
-                    if nameA == "Unnamed: 0" or "index" in nameA:
-                        continue
-
-                    if nameB in unmatched[group][nameA]:
+                    if nameA == "Unnamed: 0" or "index" in nameA or nameB in unmatched[group][nameA]:
                         continue
 
                     if nameA not in acol_set:
@@ -485,13 +432,7 @@ class SchemaMapping:
                     nameB = j
                     colB = np.array(schema_element[group][nameB])
 
-                    try:
-                        colB = colB[~np.isnan(colB)]
-                    except:
-                        try:
-                            colB = colB[colB != np.array(None)]
-                        except:
-                            colB = colB
+                    colB = colB[~np.isnan(colB)]
 
                     s1 = timeit.default_timer()
 

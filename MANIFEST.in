@@ -1,2 +1,2 @@
 recursive-include jupyter-config *.json
-recursive-include juneau/static *.js
+recursive-include juneau/dataset_inspector *.js

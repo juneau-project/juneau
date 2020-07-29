@@ -20,7 +20,7 @@ setup(
     data_files=[
         (
             "share/jupyter/nbextensions/juneau",
-            ["juneau/static/main.js"]
+            ["juneau/dataset_inspector/main.js"]
         ),
         (
             "etc/jupyter/nbconfig/notebook.d",

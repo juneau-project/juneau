@@ -63,5 +63,5 @@ See the [Developer's Guide](docs/Developers.md) for details.
 
 * `sudo -H python setup.py install`
 * `sudo -H jupyter serverextension enable --py juneau`
-* `jupyter nbextension install static / --user`
-* `jupyter nbextension enable static/main --user`
+* `jupyter nbextension install dataset_inspector / --user`
+* `jupyter nbextension enable dataset_inspector/main --user`
