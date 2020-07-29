@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 from juneau.utils.funclister import FuncLister
 from juneau.db.schemamapping import SchemaMapping
-from juneau.search.search_prov_code import SearchProv
+from juneau.search.search_prov_code import ProvenanceSearch
 from juneau.search.search_withprov import WithProv
 from juneau.db.table_db import generate_graph, pre_vars
 
@@ -416,7 +416,7 @@ class WithProv_Optimized(WithProv):
                     for l in self.schema_element[i].keys():
                         unmatched[i][j][l] = ""
 
-        prov_class = SearchProv(self.Graphs)
+        prov_class = ProvenanceSearch(self.Graphs)
         query_node = self.__generate_query_node_from_code(var_name, code)
         table_prov_rank = prov_class.search_score_rank(query_node)
         table_prov_score = {}
@@ -588,7 +588,7 @@ class WithProv_Optimized(WithProv):
         for i in self.schema_linking.keys():
             self.already_map[i] = {}
 
-        prov_class = SearchProv(self.Graphs)
+        prov_class = ProvenanceSearch(self.Graphs)
         query_node = self.__generate_query_node_from_code(var_name, code)
 
         table_prov_rank = prov_class.search_score_rank(query_node)

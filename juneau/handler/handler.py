@@ -182,7 +182,6 @@ class JuneauHandler(IPythonHandler):
     def post(self):
         logging.info("Juneau handling search request")
         if self.mode == 0:  # return table
-            self.application
             self.data_trans = {
                 "res": "",
                 "state": self.var in search_test_class.real_tables,

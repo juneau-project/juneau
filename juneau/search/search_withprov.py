@@ -3,7 +3,7 @@ import numpy as np
 import timeit
 
 from juneau.db.schemamapping import SchemaMapping
-from juneau.search.search_prov_code import SearchProv
+from juneau.search.search_prov_code import ProvenanceSearch
 from juneau.search.search_tables import SearchTables
 
 import logging
@@ -997,7 +997,7 @@ class WithProv(SearchTables):
         return rtables
 
     def search_role_sim_tables(self, query, k):
-        test_class = SearchProv()
+        test_class = ProvenanceSearch()
         table_names = test_class.search_topk(query, k)
         table_names = [t.split("_") for t in table_names]
         db_name = {}
