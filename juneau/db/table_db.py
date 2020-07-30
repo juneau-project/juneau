@@ -23,7 +23,7 @@ import networkx as nx
 from py2neo import Graph
 from sqlalchemy import create_engine
 
-from juneau import config
+from juneau.config import config
 from juneau.utils.funclister import FuncLister
 
 from sqlalchemy.orm import sessionmaker
@@ -37,20 +37,20 @@ def create_tables_as_needed(engine, eng):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    eng.execute(f"create schema if not exists {config.sql_dbs};")
-    eng.execute(f"create schema if not exists {config.sql_graph};")
-    eng.execute(f"create schema if not exists {config.sql_provenance};")
+    eng.execute(f"create schema if not exists {config.sql.dbs};")
+    eng.execute(f"create schema if not exists {config.sql.graph};")
+    eng.execute(f"create schema if not exists {config.sql.provenance};")
 
     eng.execute(
-        f"CREATE TABLE IF NOT EXISTS {config.sql_graph}.dependen (view_id character varying(1000), view_cmd text);"
+        f"CREATE TABLE IF NOT EXISTS {config.sql.graph}.dependen (view_id character varying(1000), view_cmd text);"
     )
 
     eng.execute(
-        f"CREATE TABLE IF NOT EXISTS {config.sql_graph}.line2cid (view_id character varying(1000), view_cmd text);"
+        f"CREATE TABLE IF NOT EXISTS {config.sql.graph}.line2cid (view_id character varying(1000), view_cmd text);"
     )
 
     eng.execute(
-        f"CREATE TABLE IF NOT EXISTS {config.sql_graph}.lastliid (view_id character varying(1000), view_cmd text);"
+        f"CREATE TABLE IF NOT EXISTS {config.sql.graph}.lastliid (view_id character varying(1000), view_cmd text);"
     )
 
     session.commit()
@@ -63,14 +63,14 @@ def connect2db(dbname):
     """
     try:
         engine = create_engine(
-            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}"
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}"
         )
         eng = engine.connect()
         create_tables_as_needed(engine, eng)
         return eng
     except:
         engine = create_engine(
-            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/"
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/"
         )
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
@@ -80,7 +80,7 @@ def connect2db(dbname):
         eng.connection.connection.set_isolation_level(1)
 
         engine = create_engine(
-            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}"
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}"
         )
         return engine.connect()
 
@@ -91,7 +91,7 @@ def connect2db_engine(dbname):
     """
     try:
         engine = create_engine(
-            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}",
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}",
             isolation_level="AUTOCOMMIT"
         )
 
@@ -102,7 +102,7 @@ def connect2db_engine(dbname):
         return engine
     except:
         engine = create_engine(
-            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/"
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/"
         )
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
@@ -113,7 +113,7 @@ def connect2db_engine(dbname):
         eng.close()
 
         engine = create_engine(
-            f"postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{dbname}",
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}",
             isolation_level="AUTOCOMMIT"
         )
         return engine
@@ -123,7 +123,7 @@ def connect2gdb():
     """
     Connect to Neo4J.
     """
-    return Graph(f"http://{config.neo_name}:{config.neo_password}@{config.neo_host}/db/{config.neo_db}")
+    return Graph(f"http://{config.neo.name}:{config.neo.password}@{config.neo.host}/db/{config.neo.db}")
 
 
 def fetch_all_table_names(schema, eng):

@@ -24,7 +24,7 @@ import networkx as nx
 import pandas as pd
 import psycopg2
 
-from juneau import config
+from juneau.config import config
 from juneau.utils.funclister import FuncLister
 
 special_type = ["np", "pd"]
@@ -44,8 +44,8 @@ class LineageStorage:
         TODO: Explain what this function does.
         """
         conn_string = (
-            f"host='{config.sql_host}' dbname='{config.sql_dbname}' "
-            f"user='{config.sql_name}' password='{config.sql_password}'"
+            f"host='{config.sql.host}' dbname='{config.sql.dbname}' "
+            f"user='{config.sql.name}' password='{config.sql.password}'"
         )
 
         try:
@@ -57,7 +57,7 @@ class LineageStorage:
 
             def build_table(name):
                 return (
-                    f"CREATE TABLE IF NOT EXISTS {config.sql_graph}.{name} "
+                    f"CREATE TABLE IF NOT EXISTS {config.sql.graph}.{name} "
                     f"(view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
                 )
 
@@ -218,7 +218,7 @@ class LineageStorage:
         logging.info("Updating provenance...")
         with self.eng.connect() as conn:
             try:
-                dep_db = pd.read_sql_table("dependen", conn, schema=config.sql_graph)
+                dep_db = pd.read_sql_table("dependen", conn, schema=config.sql.graph)
                 var_list = dep_db["view_id"].tolist()
             except Exception as e:
                 logging.error(f"Reading prov from database failed due to error {e}")
@@ -248,7 +248,7 @@ class LineageStorage:
 
                 def insert_value(table_name, encode):
                     conn.execute(
-                        f"INSERT INTO {config.sql_graph}.{table_name} VALUES ('{store_name}', '{encode}')"
+                        f"INSERT INTO {config.sql.graph}.{table_name} VALUES ('{store_name}', '{encode}')"
                     )
 
                 with self.eng.connect() as conn:

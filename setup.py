@@ -47,6 +47,7 @@ setup(
         "pandas",
         "jupyter_client",
         "notebook",
+        "omegaconf"
     ],
     extras_require={
         "dev": [

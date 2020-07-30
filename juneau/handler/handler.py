@@ -18,7 +18,7 @@ import logging
 import pandas as pd
 from notebook.base.handlers import IPythonHandler
 
-import juneau.config as cfg
+from juneau.config import config
 from juneau.db.table_db import connect2db_engine, connect2gdb
 from juneau.jupyter import jupyter
 from juneau.search.search import search_tables
@@ -29,7 +29,7 @@ from juneau.utils.utils import clean_notebook_name
 
 INDEXED = set()
 nb_cell_id_node = {}
-search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
+search_test_class = WithProv_Optimized(config.sql.dbname, config.sql.dbs)
 
 
 class JuneauHandler(IPythonHandler):
@@ -143,7 +143,7 @@ class JuneauHandler(IPythonHandler):
                 if not self.graph_db:
                     self.graph_db = connect2gdb()
                 if not self.psql_engine:
-                    self.psql_engine = connect2db_engine(cfg.sql_dbname)
+                    self.psql_engine = connect2db_engine(config.sql.dbname)
                 if not self.store_graph_db_class:
                     self.store_graph_db_class = ProvenanceStorage(
                         self.psql_engine, self.graph_db
@@ -215,7 +215,7 @@ class JuneauHandler(IPythonHandler):
             output.to_sql(
                 name=f"rtable{store_table_name}",
                 con=conn,
-                schema=cfg.sql_dbs,
+                schema=config.sql.dbs,
                 if_exists="replace",
                 index=False,
             )

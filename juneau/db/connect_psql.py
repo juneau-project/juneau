@@ -22,7 +22,7 @@ import sys
 from jupyter_client import BlockingKernelClient
 from jupyter_client import find_connection_file
 
-from juneau import config
+from juneau.config import config
 
 TIMEOUT = 60
 logging.basicConfig(level=logging.INFO)
@@ -45,9 +45,9 @@ def main(kid):
         
         def juneau_connect():
             engine = create_engine(
-                "postgresql://{config.sql_name}:{config.sql_password}@{config.sql_host}/{config.sql_dbname}",
+                "postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{config.sql.dbname}",
                 connect_args={{ 
-                    "options": "-csearch_path='{config.sql_dbs}'" 
+                    "options": "-csearch_path='{config.sql.dbs}'" 
                 }}
             )
             return engine.connect()

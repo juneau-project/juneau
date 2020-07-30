@@ -24,8 +24,7 @@ import numpy as np
 from sqlalchemy import create_engine
 
 from juneau.utils.cost_func import compute_table_size
-
-from juneau import config
+from juneau.config import config
 
 import logging
 
@@ -41,7 +40,7 @@ class SeparateStorage:
 
     def __connect2db(self):
         engine = create_engine(
-            f"postgresql://{config.sql_name}:{config.sql_password}@localhost/{self.dbname}"
+            f"postgresql://{config.sql.name}:{config.sql.password}@localhost/{self.dbname}"
         )
         return engine.connect()
 
@@ -54,7 +53,7 @@ class SeparateStorage:
 
         conn_string = (
             f"host='localhost' dbname='{self.dbname}' "
-            f"user='{config.sql_name}' password='{config.sql_password}'"
+            f"user='{config.sql.name}' password='{config.sql.password}'"
         )
 
         logging.info(f"Connecting to database\n	->{conn_string}")
@@ -109,9 +108,9 @@ class SeparateStorage:
             "dbname="
             + self.dbname
             + " user='"
-            + config.sql_name
+            + config.sql.name
             + "' password='"
-            + config.sql_password
+            + config.sql.password
             + "'"
         )
         cur = eng.cursor(cursor_factory=PreparingCursor)

@@ -32,7 +32,7 @@ from juneau.search.search_prov_code import ProvenanceSearch
 from juneau.search.search_withprov import WithProv
 from juneau.db.table_db import generate_graph, pre_vars
 
-import juneau.config as cfg
+from juneau.config import config
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
@@ -80,12 +80,12 @@ class WithProv_Optimized(WithProv):
     def read_graph_of_notebook(self):
         graphs = {}
         dependency = pd.read_sql_table(
-            "dependen", self.eng, schema=cfg.sql_graph
+            "dependen", self.eng, schema=config.sql.graph
         )
         line2cid = pd.read_sql_table(
-            "line2cid", self.eng, schema=cfg.sql_graph
+            "line2cid", self.eng, schema=config.sql.graph
         )
-        lastliid = pd.read_sql_table("lastliid", self.eng, schema=cfg.sql_graph)
+        lastliid = pd.read_sql_table("lastliid", self.eng, schema=config.sql.graph)
 
         dependency_store = {}
         line2cid_store = {}
