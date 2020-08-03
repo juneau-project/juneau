@@ -20,19 +20,18 @@ import ast
 import json
 import logging
 import random
-import sys
 import timeit
 
 import networkx as nx
 import numpy as np
 import pandas as pd
-from juneau.utils.funclister import FuncLister
-from juneau.db.schemamapping import SchemaMapping
-from juneau.search.search_prov_code import ProvenanceSearch
-from juneau.search.search_withprov import WithProv
-from juneau.db.table_db import generate_graph, pre_vars
 
 from juneau.config import config
+from juneau.db.schemamapping import SchemaMapping
+from juneau.db.table_db import generate_graph, pre_vars
+from juneau.search.search_prov_code import ProvenanceSearch
+from juneau.search.search_withprov import WithProv
+from juneau.utils.funclister import FuncLister
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 

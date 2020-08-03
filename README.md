@@ -2,11 +2,17 @@
 
 [![juneau-project](https://circleci.com/gh/juneau-project/juneau.svg?style=shield)](https://app.circleci.com/pipelines/github/juneau-project)
  
-The past decade has brought a sea change in the availability of data. Instead of a world in which we have small number of carefully curated data sources in a centralized database -- instead we have a plethora of datasets, data versions, and data representations that span users, groups, and organizations. Devices and data acquisition tools make it easy to acquire new data, cloud hosting makes it easy to centralize and share files, and cloud data analytics and machine learning tools have driven a desire to integrate and extract value from that data.
+The past decade has brought a sea change in the availability of data. Instead of a world in which we have small number 
+of carefully curated data sources in a centralized database -- instead we have a plethora of datasets, data versions, 
+and data representations that span users, groups, and organizations. Devices and data acquisition tools make it easy to 
+acquire new data, cloud hosting makes it easy to centralize and share files, and cloud data analytics and machine learning
+ tools have driven a desire to integrate and extract value from that data.
 
-We have been missing management tools to centralize and capture such data resources. Data scientists often end up doing redundant work because they have no effective way of finding appropriate resources to reuse and retarget to new applications.
+We have been missing management tools to centralize and capture such data resources. Data scientists often end up doing
+ redundant work because they have no effective way of finding appropriate resources to reuse and retarget to new applications.
 
-The Juneau Project develops holistic data management tools to find, standardize, and benefit from the existing resources in the data lake.  This extension to Jupyter Notebook is a point of access for our dataset management tools. 
+The Juneau Project develops holistic data management tools to find, standardize, and benefit from the existing resources
+ in the data lake.  This extension to Jupyter Notebook is a point of access for our dataset management tools. 
 
 For more on the project, please see the project
 [home](https://dbappserv.cis.upenn.edu/home/?q=node/259), as well as our research papers:
@@ -26,7 +32,7 @@ Install Docker, including docker-compose, for your preferred operating system.
 * Run `docker-compose up` from the directory.
 * Copy `juneau/config-default.py` to `juneau/config.py` 
 
-These will use the default user IDs and passwords that exist in `config.py`.
+These will use the default user IDs and passwords that exist in `config.yaml`.
 
 #### Custom Version
 
@@ -41,7 +47,8 @@ Then set up a default user ID and password for each:
 * Open your browser to `localhost:7474` and change the password on the `neo4j` password, by default to `habitat1`.
 * Copy `juneau/config-default.py` to `juneau/config.py` 
 
-Now edit the settings in `juneau/config.py` to match your password and account info.
+Now either edit the YAML file in `juneau/config/config.yaml` to match your password and account info or
+change the environment variables in your terminal.
 
 ### Sample data lake corpus
 

@@ -13,7 +13,11 @@
 # limitations under the License.
 
 """
-TODO: Explain what this module does.
+Performs three types of search functionalities in tables,
+either by:
+    1. Searching for additional training data.
+    2. Searching for joinable tables.
+    3. Searching for alternative features.
 """
 
 import json
@@ -24,9 +28,7 @@ special_type = ["np", "pd"]
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 
-def search_tables(search_test, var_df, mode, code, var_name):
-    query_table = var_df
-
+def search_tables(search_test, query_table, mode, code, var_name):
     if mode == 1:
         logging.info("Search for Additional Training/Validation Tables!")
         tables = search_test.search_additional_training_data(

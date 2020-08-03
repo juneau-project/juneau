@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """
-TODO: Explain what this module does.
+Performs provenance search in tables by using the star distance
+between rows.
 """
 
 
@@ -40,24 +41,24 @@ class ProvenanceSearch:
         dist = abs(lenA - lenB) + max(lenA, lenB) - len(intersection)
         return dist
 
-    def star_mapping_distance(self, query, root):
-        mapo = {}
-        mapr = {}
+    @staticmethod
+    def star_mapping_distance(query, root):
+        mapo, mapr = {}, {}
         distance_pair = []
         for i in query.keys():
             stara = query[i].values()
             for j in root.keys():
                 starb = root[j].values()
-                simAB = self.star_distance(stara, starb)
+                simAB = ProvenanceSearch.star_distance(stara, starb)
                 distance_pair.append((i, j, simAB))
-        distance_pair = sorted(distance_pair, key=lambda d: d[2])
 
+        distance_pair = sorted(distance_pair, key=lambda d: d[2])
         distance_ret = 0
         for i, j, k in distance_pair:
             if i not in mapo and j not in mapr:
                 mapo[i] = j
                 mapr[j] = i
-                distance_ret = distance_ret + k
+                distance_ret += k
 
         return distance_ret
 
@@ -65,23 +66,18 @@ class ProvenanceSearch:
         distance_rank = []
         for i in self.graphs_dependencies.keys():
             for j in self.graphs_dependencies[i].keys():
-                dist = self.star_mapping_distance(query, self.graphs_dependencies[i][j])
+                dist = ProvenanceSearch.star_mapping_distance(query, self.graphs_dependencies[i][j])
                 distance_rank.append((j, dist))
         distance_rank = sorted(distance_rank, key=lambda d: d[1])
-        if k > len(distance_rank):
-            k = len(distance_rank)
-        res = []
-        for i, j in distance_rank[:k]:
-            res.append(i)
-        return res
+        k = min(k, len(distance_rank))
+        return [i for i, _ in distance_rank[:k]]
 
-    def search_topk(self, query, k):
+    def search_top_k(self, query, k):
         return self.graph_edit_distance(query, k)
 
     def search_score_rank(self, query):
         distance_rank = []
         for i in self.graphs_dependencies.keys():
-            dist = self.star_mapping_distance(query, self.graphs_dependencies[i])
+            dist = ProvenanceSearch.star_mapping_distance(query, self.graphs_dependencies[i])
             distance_rank.append((i, dist))
-        distance_rank = sorted(distance_rank, key=lambda d: d[1])
-        return distance_rank
+        return sorted(distance_rank, key=lambda d: d[1])

@@ -216,7 +216,7 @@ class WithProv(SearchTables):
 
             start_time = timeit.default_timer()
             SM = self.schema_mapping(
-                self.query, self.real_tables[i], meta_mapping, gid, False
+                self.query, self.real_tables[i], meta_mapping, gid
             )
             end_time = timeit.default_timer()
             time2 += end_time - start_time
@@ -301,7 +301,7 @@ class WithProv(SearchTables):
             tableR = self.real_tables[i]
 
             start_time = timeit.default_timer()
-            SM, ms = self.schema_mapping(tableS, tableR, meta_mapping, gid, True)
+            SM, ms = self.schema_mapping(tableS, tableR, meta_mapping, gid)
             end_time = timeit.default_timer()
             time1 = time1 + end_time - start_time
 
@@ -629,7 +629,7 @@ class WithProv(SearchTables):
 
             start_time = timeit.default_timer()
             SM = self.schema_mapping(
-                self.query, self.real_tables[i], meta_mapping, gid, False
+                self.query, self.real_tables[i], meta_mapping, gid
             )
             end_time = timeit.default_timer()
             time2 += end_time - start_time
@@ -713,7 +713,7 @@ class WithProv(SearchTables):
             tableR = self.real_tables[i]
 
             start_time = timeit.default_timer()
-            SM, ms = self.schema_mapping(tableS, tableR, meta_mapping, gid, True)
+            SM, ms = self.schema_mapping(tableS, tableR, meta_mapping, gid)
             end_time = timeit.default_timer()
             time1 = time1 + end_time - start_time
 
@@ -998,7 +998,7 @@ class WithProv(SearchTables):
 
     def search_role_sim_tables(self, query, k):
         test_class = ProvenanceSearch()
-        table_names = test_class.search_topk(query, k)
+        table_names = test_class.search_top_k(query, k)
         table_names = [t.split("_") for t in table_names]
         db_name = {}
         for t in table_names:
