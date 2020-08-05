@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """
-TODO: Explain what this module does.
+The base class for all search functionalities in Juneau.
+For instance, `WithProv` inherits from this class and specifies one
+type of search functionality.
 """
 
 import copy
@@ -21,6 +23,7 @@ import logging
 import os
 import pickle
 import sys
+from abc import abstractmethod
 
 import numpy as np
 import pandas as pd
@@ -106,16 +109,17 @@ class SearchTables:
 
         self.init_schema_mapping()
 
-    def line2cid(self, dir):
+    @staticmethod
+    def line2cid(directory):
         nb_l2c = {}
-        files = os.listdir(dir)
+        files = os.listdir(directory)
         for f in files:
-            ind = pickle.load(open(dir + "/" + f, "rb"))
+            ind = pickle.load(open(os.path.join(directory, f), "rb"))
             nb_l2c[f[:-2]] = ind
         return nb_l2c
 
-    def col_similarity(self, tableA, tableB, SM, key_factor):
-
+    @staticmethod
+    def col_similarity(tableA, tableB, SM, key_factor):
         col_sim_upper = 1 + float(len(SM.keys()) - 1) * float(key_factor)
         tableA_not_in_tableB = []
         for kyA in tableA.columns.tolist():
@@ -125,11 +129,10 @@ class SearchTables:
         col_sim = float(col_sim_upper) / float(col_sim_lower)
         return col_sim
 
-    def row_similarity(self, colA, colB):
-
+    @staticmethod
+    def row_similarity(colA, colB):
         colA_value = colA[~pd.isnull(colA)].values
         colB_value = colB[~pd.isnull(colB)].values
-
         row_sim_upper = len(np.intersect1d(colA_value, colB_value))
         row_sim_lower = len(np.union1d(colA_value, colB_value))
         row_sim = float(row_sim_upper) / float(row_sim_lower)
@@ -143,7 +146,7 @@ class SearchTables:
                 if self.real_tables[i].equals(self.real_tables[k]):
                     flg = False
                     break
-            if flg == True:
+            if flg:
                 res.append((i, l))
 
             if len(res) == ks:
@@ -197,11 +200,14 @@ class SearchTables:
 
         return list(set(return_names))
 
+    @abstractmethod
     def init_schema_mapping(self):
+        """
+        Abstract function to init the schema mapping.
+        """
         return
 
-    def app_common_key(self, tableA, tableB, SM, key, thres_prune):  # thres_prune = 0.2
-
+    def app_common_key(self, tableA, tableB, SM, key, thres_prune):
         kyA = key
         kyB = SM[key]
         key_value_A = tableA[kyA].tolist()
@@ -212,8 +218,6 @@ class SearchTables:
         if min(key_estimateA, key_estimateB) <= thres_prune:
             return 0
 
-        #        other_key = list(SM.keys())
-        #        other_key.remove(key)
         mapped_keyA = list(SM.keys())
 
         if kyA not in self.query_fd:
@@ -242,7 +246,8 @@ class SearchTables:
 
         return key_score
 
-    def comp_table_similarity_row(self, tableA, tableB, key, SM, sample_size):
+    @staticmethod
+    def comp_table_similarity_row(tableA, tableB, key, SM, sample_size):
 
         value_setb = set(tableB[SM[key]].tolist())
 
@@ -257,8 +262,6 @@ class SearchTables:
                 for index, row in dfB.iterrows():
                     a = np.array(list(map(str, tableA.iloc[idi].tolist())))
                     b = np.array(list(map(str, row.tolist())))
-                    # a = a[~pd.isnull(a)].values
-                    # b = b[~pd.isnull(b)].values
                     try:
                         sim_array.append(
                             float(len(np.intersect1d(a, b)))
@@ -266,9 +269,6 @@ class SearchTables:
                         )
                     except KeyboardInterrupt:
                         return 0
-                    except:
-                        print(a)
-                        print(b)
                 sim_array = np.array(sim_array)
                 sim_sum = sim_sum + np.mean(sim_array)
                 sim_count += 1
@@ -571,9 +571,6 @@ class SearchTables:
                 key_choice.append((kyA, key_score))
 
         if len(key_choice) == 0:
-            # for i in tableA.columns.tolist():
-            #    for j in tableB.columns.tolist():
-            #        unmatched[gid][i][schema_linking[gid][j]] = ''
             return 0, meta_mapping, unmatched, 0, None
         else:
             key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
@@ -592,7 +589,7 @@ class SearchTables:
                 sm_time,
             ) = SM_test.mapping_naive_incremental(
                 tableA, tableB, gid, meta_mapping, schema_linking, unmatched, mapped=SM
-            )  # SM_test.mapping_naive(tableA, tableB, SM)
+            )
 
             row_sim = self.row_similarity(
                 tableA[key_chosen], tableB[SM_real[key_chosen]]

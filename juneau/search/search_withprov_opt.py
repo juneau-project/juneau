@@ -260,6 +260,18 @@ class WithProv_Optimized(WithProv):
         test.visit(tree)
         return test.dependency, line2cid, all_code
 
+    def sample_rows_for_each_column(self, row_size=1000):
+        self.schema_element_sample_row = {}
+        for i in self.schema_element.keys():
+            self.schema_element_sample_row[i] = {}
+            for sc in self.schema_element[i].keys():
+                if len(self.schema_element[i][sc]) < row_size:
+                    self.schema_element_sample_row[i][sc] = self.schema_element[i][sc]
+                else:
+                    self.schema_element_sample_row[i][sc] = random.sample(
+                        self.schema_element[i][sc], row_size
+                    )
+
     @staticmethod
     def __last_line_var(varname, code):
         ret = 0
@@ -274,18 +286,6 @@ class WithProv_Optimized(WithProv):
                 if varname == j[0][-len(varname) :]:
                     ret = id + 1
         return ret
-
-    def sample_rows_for_each_column(self, row_size=1000):
-        self.schema_element_sample_row = {}
-        for i in self.schema_element.keys():
-            self.schema_element_sample_row[i] = {}
-            for sc in self.schema_element[i].keys():
-                if len(self.schema_element[i][sc]) < row_size:
-                    self.schema_element_sample_row[i][sc] = self.schema_element[i][sc]
-                else:
-                    self.schema_element_sample_row[i][sc] = random.sample(
-                        self.schema_element[i][sc], row_size
-                    )
 
     def sketch_column_and_row_for_meta_mapping(self, sz=5, row_size=1000):
         self.schema_element_sample_col = {}
@@ -773,107 +773,20 @@ class WithProv_Optimized(WithProv):
 
         return rtables
 
-    def search_joinable_data(self, query, k, thres_key_prune):
-
-        # choose only top possible key columns
-        query_col = self.sketch_query_cols(query)
-
-        # introduce the schema mapping class
-        SM_test = SchemaMapping(sim_thres=0.6)
-        # do partial schema mapping
-        partial_mapping = SM_test.mapping_naive_tables(
-            query, query_col, self.schema_element_sample_col, self.schema_element_dtype
-        )
-
-        unmatched = {}
-        for i in self.schema_linking.keys():
-            unmatched[i] = {}
-            for j in query.columns.tolist():
-                unmatched[i][j] = {}
-
-        meta_mapping, unmatched = SM_test.mapping_naive_tables_join(
-            query,
-            query_col,
-            self.schema_element_sample_col,
-            self.schema_element_sample_row,
-            self.schema_element_dtype,
-            unmatched,
-        )
-        logging.info("meta mapping finished!")
-
-        rank_candidate = []
-
-        for i in self.real_tables.keys():
-
-            tname = i
-            gid = self.table_group[tname[6:]]
-            if gid not in meta_mapping:
-                continue
-
-            tableS = query
-            tableR = self.real_tables[i]
-
-            SM, ms = self.schema_mapping(tableS, tableR, meta_mapping, gid)
-
-            if len(SM.items()) == 0:
-                continue
-
-            key_choice = []
-            for kyA in SM.keys():
-                key_score = self.approximate_join_key(
-                    query, tableR, SM, kyA, thres_key_prune
-                )
-                key_choice.append((kyA, key_score))
-
-            if len(key_choice) == 0:
-                continue
-            else:
-                key_choice = sorted(key_choice, key=lambda d: d[1], reverse=True)
-                key_factor = key_choice[0][1]
-
-            rank_candidate.append((tname, key_factor))
-
-        rank_candidate = sorted(rank_candidate, key=lambda d: d[1], reverse=True)
-
-        if len(rank_candidate) == 0:
-            return []
-
-        if len(rank_candidate) > k:
-            ks = k
-        else:
-            ks = len(rank_candidate)
-
-        rtables_names = self.__remove_dup2(rank_candidate, k)
-
-        # logging.info('Schema Mapping Costs: %s Seconds'%time1)
-        # logging.info('Full Search Costs:%s Seconds'%time3)
-
-        rtables = []
-        for i in rtables_names:
-            rtables.append((i, self.real_tables[i]))
-
-        return rtables
-
     def search_similar_tables_threshold2(
         self, query, beta, k, theta, thres_key_cache, thres_key_prune, tflag=False
     ):
 
         self.query = query
-
         self.query_fd = {}
-
         self.already_map = {}
         SM_test = SchemaMapping()
         start_time1 = timeit.default_timer()
 
-        # store the mapping computed at the very beginning
-        # Initialize
         for i in self.schema_linking.keys():
             self.already_map[i] = {}
 
-        # Choose the most possible keys from the query table
         query_col = self.sketch_query_cols(query)
-        # print(query_col)
 
         time1 = 0
         start_time = timeit.default_timer()
@@ -887,8 +800,6 @@ class WithProv_Optimized(WithProv):
 
         end_time = timeit.default_timer()
         time1 += end_time - start_time
-
-        # logging.info(str(meta_mapping))
 
         # Compute unmatched pairs
         unmatched = {}
@@ -975,7 +886,6 @@ class WithProv_Optimized(WithProv):
                 self.schema_linking,
                 thres_key_prune,
                 thres_key_cache,
-                unmatched,
             )
             top_tables.append((rank_candidate[i][0], score, key_chosen))
             time1 += sm_time

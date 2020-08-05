@@ -40,9 +40,6 @@ class LineageStorage:
 
     @staticmethod
     def __connect2db():
-        """
-        TODO: Explain what this function does.
-        """
         conn_string = (
             f"host='{config.sql.host}' dbname='{config.sql.dbname}' "
             f"user='{config.sql.name}' password='{config.sql.password}'"
@@ -76,9 +73,6 @@ class LineageStorage:
 
     @staticmethod
     def __last_line_var(varname, code):
-        """
-        TODO: Explain what this function does.
-        """
         ret = 0
         code = code.split("\n")
         for id, i in enumerate(code):
@@ -94,10 +88,6 @@ class LineageStorage:
 
     @staticmethod
     def __parse_code(code_list):
-        """
-        TODO: Explain what this function does.
-        """
-
         test = FuncLister()
         all_code = ""
         line2cid = {}
@@ -156,10 +146,6 @@ class LineageStorage:
         return test.dependency, line2cid, all_code
 
     def generate_graph(self, code_list, nb_name):
-        """
-        TODO: Explain what this function does.
-        """
-
         dependency, line2cid, all_code = self.__parse_code(code_list)
         G = nx.DiGraph()
         for i in dependency.keys():
@@ -211,10 +197,6 @@ class LineageStorage:
         return G, line2cid
 
     def insert_table_model(self, store_name, var_name, code_list):
-        """
-        TODO: Explain what this function does.
-        """
-
         logging.info("Updating provenance...")
         with self.eng.connect() as conn:
             try:

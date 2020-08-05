@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-TODO: Explain what this module does.
-"""
-
-import psycopg2
-import timeit
-import pandas as pd
-import numpy as np
-
-from sqlalchemy import create_engine
-
-from juneau.utils.cost_func import compute_table_size
-from juneau.config import config
 
 import logging
+import timeit
+
+import pandas as pd
+import psycopg2
+from sqlalchemy import create_engine
+
+from juneau.config import config
+from juneau.utils.cost_func import compute_table_size
 
 
 class SeparateStorage:
@@ -98,38 +93,6 @@ class SeparateStorage:
         if self.time_flag:
             end_time = timeit.default_timer()
             logging.info(end_time - start_time)
-
-    def query_tables_times(self, vid):
-        """
-        FIXME: Unused function. Delete? Unused parameter `vid`.
-        """
-
-        eng = psycopg2.connect(
-            "dbname="
-            + self.dbname
-            + " user='"
-            + config.sql.name
-            + "' password='"
-            + config.sql.password
-            + "'"
-        )
-        cur = eng.cursor(cursor_factory=PreparingCursor)
-        time_total = []
-        for var in self.variable:
-            cur.prepare("select * from rowstore.rtable" + str(var) + ";")
-            delta_time_array = []
-            for i in range(10):
-                start_time = timeit.default_timer()
-                cur.execute()
-                end_time = timeit.default_timer()
-                delta_time = end_time - start_time
-                delta_time_array.append(delta_time)
-
-            delta_time_array = np.array(delta_time_array)
-            time_total.append(np.mean(delta_time_array))
-        cur.close()
-        eng.close()
-        return float(np.mean(time_total))
 
     def query_storage_size(self):
         eng = self.__connect2db()

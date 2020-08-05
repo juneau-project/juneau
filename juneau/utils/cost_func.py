@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-TODO: Explain what this module does.
-"""
-
 import logging
 from difflib import SequenceMatcher
 

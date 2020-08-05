@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-TODO: Explain what this module does.
+Module to store a table's provenance.
 """
 
 import base64
@@ -31,10 +31,6 @@ class ProvenanceStorage:
         self.code_dict = {}
 
     def _initialize_code_dict(self):
-        """
-        TODO: Explain what this function does.
-        """
-
         query1 = "DROP SCHEMA IF EXISTS " + config.sql.provenance + " CASCADE;"
         query2 = "CREATE SCHEMA " + config.sql.provenance + ";"
         query3 = "CREATE TABLE " + config.sql.provenance + ".code_dict (code VARCHAR(1000), cell_id INTEGER);"
@@ -56,10 +52,6 @@ class ProvenanceStorage:
                 )
 
     def _fetch_code_dict(self):
-        """
-        TODO: Explain what this function does.
-        """
-
         with self.postgres_eng.connect() as conn:
             try:
                 code_table = pd.read_sql_table(
@@ -73,10 +65,6 @@ class ProvenanceStorage:
                 )
 
     def _store_code_dict(self):
-        """
-        TODO: Explain what this function does.
-        """
-
         dict_store = {"code": [], "cell_id": []}
         for i in self.code_dict.keys():
             dict_store["code"].append(i)
