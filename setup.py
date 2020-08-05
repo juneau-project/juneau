@@ -1,3 +1,7 @@
+# Good read on how Jupyter automagically installs the server extension
+# through pip: http://danlester.com/nbextensions-config/
+
+
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
@@ -5,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="juneau",
-    version="0.0.2",
+    version="0.0.4",
     description="Data Extension for Jupyter notebook",
     packages=find_packages(),
     include_package_data=True,

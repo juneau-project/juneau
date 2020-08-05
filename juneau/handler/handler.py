@@ -22,14 +22,9 @@ from juneau.config import config
 from juneau.db.table_db import connect2db_engine, connect2gdb
 from juneau.jupyter import jupyter
 from juneau.search.search import search_tables
-from juneau.search.search_withprov_opt import WithProv_Optimized
 from juneau.store.store_graph import ProvenanceStorage
 from juneau.store.store_prov import LineageStorage
 from juneau.utils.utils import clean_notebook_name
-
-INDEXED = set()
-nb_cell_id_node = {}
-search_test_class = WithProv_Optimized(config.sql.dbname, config.sql.dbs)
 
 
 class JuneauHandler(IPythonHandler):
@@ -68,9 +63,7 @@ class JuneauHandler(IPythonHandler):
             This function is called on *every* request.
 
         """
-
         data = self.request.arguments
-
         self.var = data["var"][0].decode("utf-8")
         self.kernel_id = data["kid"][0].decode("utf-8")
         self.code = data["code"][0].decode("utf-8")
@@ -122,13 +115,13 @@ class JuneauHandler(IPythonHandler):
 
     def put(self):
         logging.info(f"Juneau indexing request: {self.var}")
-        logging.info(f"Stored tables: {INDEXED}")
+        logging.info(f"Stored tables: {self.application.indexed}")
 
         cleaned_nb_name = clean_notebook_name(self.nb_name)
         code_list = self.code.strip("\\n#\\n").split("\\n#\\n")
         store_table_name = f"{self.cell_id}_{self.var}_{cleaned_nb_name}"
 
-        if store_table_name in INDEXED:
+        if store_table_name in self.application.indexed:
             logging.info("Request to index is already registered.")
         elif self.var not in code_list[-1]:
             logging.info("Not a variable in the current cell.")
@@ -151,13 +144,13 @@ class JuneauHandler(IPythonHandler):
                 if not self.store_prov_db_class:
                     self.store_prov_db_class = LineageStorage(self.psql_engine)
 
-                if cleaned_nb_name not in nb_cell_id_node:
-                    nb_cell_id_node[cleaned_nb_name] = {}
+                if cleaned_nb_name not in self.application.nb_cell_id_node:
+                    self.application.nb_cell_id_node[cleaned_nb_name] = {}
 
                 try:
                     for cid in range(self.cell_id - 1, -1, -1):
-                        if cid in nb_cell_id_node[cleaned_nb_name]:
-                            self.prev_node = nb_cell_id_node[cleaned_nb_name][cid]
+                        if cid in self.application.nb_cell_id_node[cleaned_nb_name]:
+                            self.prev_node = self.application.nb_cell_id_node[cleaned_nb_name][cid]
                             break
                     self.prev_node = self.store_graph_db_class.add_cell(
                         self.code,
@@ -166,8 +159,8 @@ class JuneauHandler(IPythonHandler):
                         self.cell_id,
                         cleaned_nb_name,
                     )
-                    if self.cell_id not in nb_cell_id_node[cleaned_nb_name]:
-                        nb_cell_id_node[cleaned_nb_name][self.cell_id] = self.prev_node
+                    if self.cell_id not in self.application.nb_cell_id_node[cleaned_nb_name]:
+                        self.application.nb_cell_id_node[cleaned_nb_name][self.cell_id] = self.prev_node
                 except Exception as e:
                     logging.error(f"Unable to store in graph store due to error {e}")
 
@@ -184,14 +177,14 @@ class JuneauHandler(IPythonHandler):
         if self.mode == 0:  # return table
             self.data_trans = {
                 "res": "",
-                "state": self.var in search_test_class.real_tables,
+                "state": self.var in self.application.search_test_class.real_tables,
             }
             self.write(json.dumps(self.data_trans))
         else:
             success, output = self.find_variable()
             if success:
                 data_json = search_tables(
-                    search_test_class, output, self.mode, self.code, self.var
+                    self.application.search_test_class, output, self.mode, self.code, self.var
                 )
                 self.data_trans = {"res": data_json, "state": data_json != ""}
                 self.write(json.dumps(self.data_trans))
@@ -225,7 +218,7 @@ class JuneauHandler(IPythonHandler):
                 self.store_prov_db_class.insert_table_model(
                     store_table_name, self.var, code_list
                 )
-                INDEXED.add(store_table_name)
+                self.application.indexed.add(store_table_name)
             except Exception as e:
                 logging.error(
                     f"Unable to store provenance of {store_table_name} "
