@@ -126,13 +126,13 @@ def connect2gdb():
     """
     Connect to Neo4J.
     """
-    MAX_TRIES_ALLOWED = 5
+    MAX_TRIES_ALLOWED = 10
     while MAX_TRIES_ALLOWED > 0:
         try:
             return Graph(f"http://{config.neo.name}:{config.neo.password}@{config.neo.host}/db/{config.neo.db}")
         except MaxRetryError:
             logging.warning("Could not connect to neo4j. Sleeping and retrying...")
-            time.sleep(10)
+            time.sleep(20)
             MAX_TRIES_ALLOWED -= 1
     else:
         raise ValueError("Could not connect to neo4j. Are you sure the credentials are correct?")
