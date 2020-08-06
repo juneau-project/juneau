@@ -24,7 +24,7 @@ For more on the project, please see the project
 
 ### Prerequisites: relational and graph databases
 
-### Simple Version
+#### Simple Version
 
 Git clone the repo and build the docker juneau image:
 
