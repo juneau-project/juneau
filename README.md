@@ -24,13 +24,31 @@ For more on the project, please see the project
 
 ### Prerequisites: relational and graph databases
 
-#### Simple Version
+### Simple Version
+
+Git clone the repo and build the docker juneau image:
+
+```bash
+docker build -t juneau -f docker/Dockerfile .
+```
+
+Now that we have built Juneau's image, run the three services (Postgres, Neo4j, and Juneau) via
+docker-compose:
+
+```bash
+docker-compose -f docker/docker-compose.yaml up
+```
+
+That's it! As you would normally do, head over to the link that Jupyter will show on the terminal.
+
+
+#### Simple Version Using PennProv
 
 Install Docker, including docker-compose, for your preferred operating system.
 
 * Download [this file](https://bitbucket.org/penndb/pennprov/raw/f6fa02fdebdd1bf99a6abc25f56b9dcaf4d28e26/docker-container/docker-compose.yml) for Docker-Compose
 * Run `docker-compose up` from the directory.
-* Copy `juneau/config-default.py` to `juneau/config.py` 
+* Copy `juneau/config-default.py` to `juneau/config.py`
 
 These will use the default user IDs and passwords that exist in `config.yaml`.
 
