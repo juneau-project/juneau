@@ -224,6 +224,21 @@ class JuneauHandler(IPythonHandler):
                     f"Unable to store provenance of {store_table_name} "
                     f"due to error {e}"
                 )
+            
+            # this process can take as long as an hour to complete, so if you don't want to wait for that long
+            # feel free to comment it out when you are running this script
+            try:
+                schema = 'rowstore'  # the schema that stores the corpus of tables
+                num_hash = 256  # number of hash functions used
+                max_k = 4
+                max_l = int(num_hash/max_k)  # number of bands
+                num_part = 32  # number of partitions
+                exec_string = f"SELECT corpus_construct_sig('{schema}', {num_hash});"
+                exec_string += f"SELECT corpus_construct_hash({max_k}, {max_l}, {num_part})"
+                conn.execute(exec_string)
+            except Exception as e:
+                logging.error(f'Unable to complete LSH indexing corpus in rowstore')
+
             logging.info(f"Returning after indexing {store_table_name}")
         except Exception as e:
             logging.error(f"Unable to store {store_table_name} due to error {e}")
