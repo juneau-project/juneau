@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=habitat1
+      - POSTGRES_DB=postgres
+    ports:
+      - '5432:5432'
+  neo4j:
+    image: neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/example_password
+  juneau:
+    image: juneau
+    ports:
+      - '8888:8888'
+    environment:
+      - SQL_HOST=postgres
+      - NEO_HOST=neo4j:7474
+      - NEO_PASSWORD=example_password
+    depends_on:
+      - neo4j
+      - postgres
+

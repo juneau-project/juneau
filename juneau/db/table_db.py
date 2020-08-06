@@ -17,11 +17,14 @@ Helper module to create the necessary tables for Juneau to work.
 """
 
 import ast
+import logging
 import queue
+import time
 
 import networkx as nx
 from py2neo import Graph
 from sqlalchemy import create_engine
+from urllib3.exceptions import MaxRetryError
 
 from juneau.config import config
 from juneau.utils.funclister import FuncLister
@@ -123,7 +126,16 @@ def connect2gdb():
     """
     Connect to Neo4J.
     """
-    return Graph(f"http://{config.neo.name}:{config.neo.password}@{config.neo.host}/db/{config.neo.db}")
+    MAX_TRIES_ALLOWED = 5
+    while MAX_TRIES_ALLOWED > 0:
+        try:
+            return Graph(f"http://{config.neo.name}:{config.neo.password}@{config.neo.host}/db/{config.neo.db}")
+        except MaxRetryError:
+            logging.warning("Could not connect to neo4j. Sleeping and retrying...")
+            time.sleep(10)
+            MAX_TRIES_ALLOWED -= 1
+    else:
+        raise ValueError("Could not connect to neo4j. Are you sure the credentials are correct?")
 
 
 def fetch_all_table_names(schema, eng):
