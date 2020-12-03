@@ -11,3 +11,17 @@ neo:
   password: ${env:NEO_PASSWORD,habitat1}
   host: ${env:NEO_HOST,localhost:7474}
   db: ${env:NEO_DB,data}
+lshe:
+  max_k: ${env:LSHE_MAX_K,4}
+  num_hash: ${env:LSHE_NUM_HASH,256}
+  num_part: ${env:LSHE_NUM_PART,32}
+  corpus_sig: ${env:LSHE_CORPUS_SIG,test_sig}
+  corpus_hash: ${env:LSHE_CORPUS_HASH,test_hash}
+  q_sig: ${env:LSHE_Q_SIG,test_q_sig}
+  q_hash: ${env:LSHE_Q_HASH,test_q_hash}
+ks:
+  corpus: ${env:KS_CORPUS,utils}
+topk:
+  return_table_num: ${env:TOPK_RETURN_TABLE_NUM,10}
+  schema_ra_states: ${env:TOPK_SCHEMA_RA_STATES,topk_ra_states}
+  schema_sa_states: ${env:TOPK_SCHEMA_SA_STATES,topk_sa_states}

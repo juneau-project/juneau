@@ -23,14 +23,16 @@ import logging
 import networkx as nx
 import pandas as pd
 import psycopg2
+import base64
 
 from juneau.config import config
-from juneau.utils.funclister import FuncLister
+from juneau.utils.utils import parse_code, last_line_var
 
 special_type = ["np", "pd"]
 
 
 class LineageStorage:
+
     def __init__(self, psql_eng):
         self.eng = psql_eng
         self.__connect2db()
@@ -58,7 +60,7 @@ class LineageStorage:
                     f"(view_id VARCHAR(1000), view_cmd VARCHAR(10000000));"
                 )
 
-            tables = ["dependen", "line2cid", "lastliid"]
+            tables = ["dependen", "line2cid", "lastliid", "var_code"]
             try:
                 for table in tables:
                     cursor.execute(build_table(table))
@@ -71,82 +73,8 @@ class LineageStorage:
         except Exception as e:
             logging.error(f"Connection to database failed due to error {e}")
 
-    @staticmethod
-    def __last_line_var(varname, code):
-        ret = 0
-        code = code.split("\n")
-        for id, i in enumerate(code):
-            if "=" not in i:
-                continue
-            j = i.split("=")
-            j = [t.strip(" ") for t in j]
-
-            if varname in j[0]:
-                if varname == j[0][-len(varname) :]:
-                    ret = id + 1
-        return ret
-
-    @staticmethod
-    def __parse_code(code_list):
-        test = FuncLister()
-        all_code = ""
-        line2cid = {}
-
-        lid = 1
-        fflg = False
-        for cid, cell in enumerate(code_list):
-            if "\\n" in cell:
-                codes = cell.split("\\n")
-            elif "\n" in cell:
-                codes = cell.split("\n")
-            new_codes = []
-            for code in codes:
-
-                if code[:3].lower() == "def":
-                    fflg = True
-                    continue
-
-                temp_code = code.strip(" ")
-                temp_code = temp_code.strip("\t")
-
-                if temp_code[:6].lower() == "return":
-                    fflg = False
-                    continue
-
-                code = code.strip("\n")
-                code = code.strip(" ")
-                code = code.split('"')
-                code = "'".join(code)
-                code = code.split("\\")
-                code = "".join(code)
-
-                if not code or code[0] in ["%", "#", " ", "\n"]:
-                    continue
-
-                try:
-                    ast.parse(code)
-                    if not fflg:
-                        new_codes.append(code)
-                        line2cid[lid] = cid
-                        lid = lid + 1
-                except Exception as e:
-                    logging.info(
-                        f"Parsing error in code fragment {code} due to error {e}"
-                    )
-
-            all_code = all_code + "\n".join(new_codes) + "\n"
-
-        all_code = all_code.strip("\n")
-        all_code = all_code.split("\n")
-        all_code = [t for t in all_code if t != ""]
-        all_code = "\n".join(all_code)
-
-        tree = ast.parse(all_code)
-        test.visit(tree)
-        return test.dependency, line2cid, all_code
-
     def generate_graph(self, code_list, nb_name):
-        dependency, line2cid, all_code = self.__parse_code(code_list)
+        dependency, line2cid, all_code = parse_code(code_list)
         G = nx.DiGraph()
         for i in dependency.keys():
             left = dependency[i][0]
@@ -206,8 +134,8 @@ class LineageStorage:
                 logging.error(f"Reading prov from database failed due to error {e}")
 
         try:
-            dep, c2i, all_code = self.__parse_code(code_list)
-            lid = self.__last_line_var(var_name, all_code)
+            dep, c2i, all_code = parse_code(code_list)
+            lid = last_line_var(var_name, all_code)
         except Exception as e:
             logging.error(f"Parse code failed due to error {e}")
             return
@@ -216,6 +144,7 @@ class LineageStorage:
             dep_str = json.dumps(dep)
             l2c_str = json.dumps(c2i)
             lid_str = json.dumps(lid)
+            cod_str = json.dumps(code_list)
 
             logging.info("JSON created")
 
@@ -224,8 +153,11 @@ class LineageStorage:
 
             encode1 = dep_str
             encode2 = l2c_str
+            encode3 = lid_str
+            encode4 = str(base64.b64encode(bytes(cod_str, 'utf-8')), 'utf-8')
 
             if store_name not in var_list and store_name not in self.variable:
+
                 logging.debug("Inserting values into dependen and line2cid")
 
                 def insert_value(table_name, encode):
@@ -238,7 +170,8 @@ class LineageStorage:
                         for table, encoded in [
                             ("dependen", encode1),
                             ("line2cid", encode2),
-                            ("lastliid", lid_str),
+                            ("lastliid", encode3),
+                            ("var_code", encode4)
                         ]:
                             insert_value(table, encoded)
                         self.variable.append(store_name)

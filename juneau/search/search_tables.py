@@ -34,49 +34,49 @@ from juneau.db.table_db import (
     fetch_all_table_names,
     fetch_all_views,
 )
-
+from juneau.config import config
 
 class SearchTables:
+
     query = None
     eng = None
     geng = None
-    real_tables = []
-    already_map = []
+    all_tables_read = {}
 
-    def __init__(self, dbname, schema=None):
+    def __init__(self, schema, read_flag = True):
         self.query = None
-        self.eng = connect2db_engine(dbname)
+        self.eng = connect2db_engine(config.sql.dbname)
         self.geng = connect2gdb()
-
-        self.real_tables = {}
         conn = self.eng.connect()
 
         if schema:
             logging.info("Indexing existing tables from data lake")
             self.tables = fetch_all_table_names(schema, conn)
 
-            count = 0
-            for i in self.tables:
-                try:
-                    table_r = pd.read_sql_table(i, conn, schema=schema)
-                    if "Unnamed: 0" in table_r.columns:
-                        table_r.drop(["Unnamed: 0"], axis=1, inplace=True)
-                    self.real_tables[i] = table_r
-                    count = count + 1
-                    if count % 20 == 0:
-                        logging.info("Indexed " + str(count) + " tables...")
-                except KeyboardInterrupt:
-                    return
-                except ValueError:
-                    logging.info("Value error, skipping table " + i)
-                    continue
-                except TypeError:
-                    logging.info("Type error, skipping table " + i)
-                    continue
-                except:
-                    logging.info("Error, skipping table " + i)
-                    logging.error("Unexpected error:", sys.exc_info()[0])
-                    continue
+            if read_flag:
+                count = 0
+                for i in self.tables:
+                    try:
+                        table_r = pd.read_sql_table(i, conn, schema=schema)
+                        if 'Unnamed: 0' in table_r.columns:
+                            table_r.drop(['Unnamed: 0'], axis=1, inplace=True)
+                        self.all_tables_read[i] = table_r
+                        count = count + 1
+                        if count % 20 == 0:
+                            logging.info("Indexed " + str(count) + " tables...")
+                    except KeyboardInterrupt:
+                        return
+                    except ValueError:
+                        logging.info("Value error, skipping table " + i)
+                        continue
+                    except TypeError:
+                        logging.info("Type error, skipping table " + i)
+                        continue
+                    except:
+                        logging.info("Error, skipping table " + i)
+                        logging.error("Unexpected error:", sys.exc_info()[0])
+                        continue
+
         else:
             logging.info("Indexing views from data lake")
             self.tables = fetch_all_views(conn)  # self.eng)
@@ -84,7 +84,7 @@ class SearchTables:
             for i in self.tables:
                 try:
                     table_r = pd.read_sql_table(i, conn)  # self.eng)
-                    self.real_tables[i] = table_r
+                    self.all_tables_read[i] = table_r
                     count = count + 1
 
                     if count % 20 == 0:
@@ -104,10 +104,13 @@ class SearchTables:
 
         conn.close()
         logging.info(
-            "%s tables detected in the database." % len(self.real_tables.keys())
+            "%s tables detected in the database." % len(self.tables)
+        )
+        logging.info(
+            "%s tables loaded from the database." % len(self.all_tables_read.items())
         )
 
-        self.init_schema_mapping()
+        #self.init_schema_mapping()
 
     @staticmethod
     def line2cid(directory):

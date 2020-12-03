@@ -25,6 +25,7 @@ from juneau.config import config
 
 
 class ProvenanceStorage:
+
     def __init__(self, postgres_eng, graph_eng):
         self.graph_db = graph_eng
         self.postgres_eng = postgres_eng
@@ -81,7 +82,9 @@ class ProvenanceStorage:
         stored node (for cell provenance tracking).
         """
         self._fetch_code_dict()
+        #print(code)
         bcode = base64.b64encode(bytes(code, "utf-8"))
+        #print(bcode)
         nbcode = bcode.decode("utf-8")
         matcher = NodeMatcher(self.graph_db)
 
@@ -92,7 +95,7 @@ class ProvenanceStorage:
                 max_id = max(list(self.code_dict.values()))
             else:
                 max_id = 0
-            current_cell = Node("Cell", name=f"cell_{max_id + 1}", source_code=bcode)
+            current_cell = Node("Cell", name=f"cell_{max_id + 1}", source_code=nbcode)
             self.graph_db.create(current_cell)
             self.graph_db.push(current_cell)
 

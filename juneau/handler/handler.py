@@ -22,10 +22,9 @@ from juneau.config import config
 from juneau.db.table_db import connect2db_engine, connect2gdb
 from juneau.jupyter import jupyter
 from juneau.search.search import search_tables
-from juneau.store.store_graph import ProvenanceStorage
-from juneau.store.store_prov import LineageStorage
-from juneau.utils.utils import clean_notebook_name
-
+from juneau.store.variable import Var_Info
+from juneau.store.store_func import Storage
+from juneau.search.query import Query
 
 class JuneauHandler(IPythonHandler):
     """
@@ -75,11 +74,7 @@ class JuneauHandler(IPythonHandler):
 
         self.done = set()
         self.data_trans = {}
-        self.graph_db = None
-        self.psql_engine = None
-        self.store_graph_db_class = None
-        self.store_prov_db_class = None
-        self.prev_node = None
+        self.store_class = Storage()
 
     def find_variable(self):
         """
@@ -117,57 +112,33 @@ class JuneauHandler(IPythonHandler):
         logging.info(f"Juneau indexing request: {self.var}")
         logging.info(f"Stored tables: {self.application.indexed}")
 
-        cleaned_nb_name = clean_notebook_name(self.nb_name)
-        code_list = self.code.strip("\\n#\\n").split("\\n#\\n")
-        store_table_name = f"{self.cell_id}_{self.var}_{cleaned_nb_name}"
+        new_var = Var_Info(self.var, self.cell_id, self.nb_name, self.code)
 
-        if store_table_name in self.application.indexed:
+        if new_var.store_name in self.application.indexed:
             logging.info("Request to index is already registered.")
-        elif self.var not in code_list[-1]:
+        elif new_var.var_name not in new_var.code_list[-1]:
             logging.info("Not a variable in the current cell.")
         else:
-            logging.info(f"Starting to store {self.var}")
+            logging.info(f"Starting to store {new_var.var_name}")
             success, output = self.find_variable()
 
             if success:
-                logging.info(f"Getting value of {self.var}")
+                logging.info(f"Getting value of {new_var.var_name}")
                 logging.info(output.head())
 
-                if not self.graph_db:
-                    self.graph_db = connect2gdb()
-                if not self.psql_engine:
-                    self.psql_engine = connect2db_engine(config.sql.dbname)
-                if not self.store_graph_db_class:
-                    self.store_graph_db_class = ProvenanceStorage(
-                        self.psql_engine, self.graph_db
-                    )
-                if not self.store_prov_db_class:
-                    self.store_prov_db_class = LineageStorage(self.psql_engine)
+                new_var.get_value(output)
 
-                if cleaned_nb_name not in self.application.nb_cell_id_node:
-                    self.application.nb_cell_id_node[cleaned_nb_name] = {}
-
+                if new_var.nb not in self.application.nb_cell_id_node:
+                    self.application.nb_cell_id_node[new_var.nb] = {}
                 try:
-                    for cid in range(self.cell_id - 1, -1, -1):
-                        if cid in self.application.nb_cell_id_node[cleaned_nb_name]:
-                            self.prev_node = self.application.nb_cell_id_node[cleaned_nb_name][cid]
-                            break
-                    self.prev_node = self.store_graph_db_class.add_cell(
-                        self.code,
-                        self.prev_node,
-                        self.var,
-                        self.cell_id,
-                        cleaned_nb_name,
-                    )
-                    if self.cell_id not in self.application.nb_cell_id_node[cleaned_nb_name]:
-                        self.application.nb_cell_id_node[cleaned_nb_name][self.cell_id] = self.prev_node
+                    new_var.get_prev_node(self.application.nb_cell_id_node)
+                    self.prev_node = self.store_class.store_table(new_var, self.application.schema_mapping_class)
+                    if new_var.cid not in self.application.nb_cell_id_node[new_var.nb]:
+                        self.application.nb_cell_id_node[new_var.nb][new_var.cid] = self.prev_node
                 except Exception as e:
                     logging.error(f"Unable to store in graph store due to error {e}")
-
-                self.store_table(output, store_table_name)
-
             else:
-                logging.error("find variable failed!")
+                logging.error("Find variable failed!")
 
         self.data_trans = {"res": "", "state": str("true")}
         self.write(json.dumps(self.data_trans))
@@ -183,9 +154,10 @@ class JuneauHandler(IPythonHandler):
         else:
             success, output = self.find_variable()
             if success:
+                codes = "\\n".join(self.code.strip("\\n#\\n").split("\\n#\\n"))
+                query = Query(self.application.search_test_class.eng, self.cell_id, codes, self.var, self.nb_name, output)
                 data_json = search_tables(
-                    self.application.search_test_class, output, self.mode, self.code, self.var
-                )
+                    self.application.search_test_class, self.application.schema_mapping_class, self.mode, query)
                 self.data_trans = {"res": data_json, "state": data_json != ""}
                 self.write(json.dumps(self.data_trans))
             else:
@@ -193,39 +165,3 @@ class JuneauHandler(IPythonHandler):
                 self.data_trans = {"error": output, "state": False}
                 self.write(json.dumps(self.data_trans))
 
-    def store_table(self, output, store_table_name):
-        """
-        Asynchronously stores a table into the database.
-
-        Notes:
-            This is the refactored version of `fn`.
-
-        """
-        logging.info(f"Indexing new table {store_table_name}")
-        conn = self.psql_engine.connect()
-
-        try:
-            output.to_sql(
-                name=f"rtable{store_table_name}",
-                con=conn,
-                schema=config.sql.dbs,
-                if_exists="replace",
-                index=False,
-            )
-            logging.info("Base table stored")
-            try:
-                code_list = self.code.split("\\n#\\n")
-                self.store_prov_db_class.insert_table_model(
-                    store_table_name, self.var, code_list
-                )
-                self.application.indexed.add(store_table_name)
-            except Exception as e:
-                logging.error(
-                    f"Unable to store provenance of {store_table_name} "
-                    f"due to error {e}"
-                )
-            logging.info(f"Returning after indexing {store_table_name}")
-        except Exception as e:
-            logging.error(f"Unable to store {store_table_name} due to error {e}")
-        finally:
-            conn.close()

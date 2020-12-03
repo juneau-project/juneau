@@ -22,29 +22,30 @@ either by:
 
 import json
 import logging
+from juneau.config import config
 
 special_type = ["np", "pd"]
 
 logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 
-def search_tables(search_test, query_table, mode, code, var_name):
+def search_tables(search_test, sm, mode, query):
+
     if mode == 1:
         logging.info("Search for Additional Training/Validation Tables!")
         tables = search_test.search_additional_training_data(
-            query_table, 10, code, var_name, 0.5, 1
-        )
+            sm, query, config.topk.return_table_num, alpha=0.5, beta=0.2)
+
         logging.info("%s Tables are returned!" % len(tables))
     elif mode == 2:
-        logging.info("Search for Joinable Tables!")
-        tables = search_test.search_joinable_tables_threshold2(
-            query_table, 0.1, 10, 1.5, 0.9, 0.2
-        )
-        logging.info("%s Joinable Tables are returned!" % len(tables))
-    else:
         logging.info("Search for Alternative Feature Tables!")
         tables = search_test.search_alternative_features(
-            query_table, 10, code, var_name, 90, 200, 0.1, 10, 0.9, 0.2
+            sm, query, config.topk.return_table_num)
+        logging.info("%s Tables are returned!" % len(tables))
+    else:
+        logging.info("Search for Alternative Feature Tables!")
+        tables = search_test.search_alternative_data_clean(
+            sm, query, config.topk.return_table_num
         )
         logging.info("%s Tables are returned!" % len(tables))
 

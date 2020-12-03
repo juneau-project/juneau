@@ -32,12 +32,14 @@ from juneau.utils.funclister import FuncLister
 from sqlalchemy.orm import sessionmaker
 
 
-def create_tables_as_needed(engine, eng):
+def create_tables_as_needed(engine):
     """
     Creates the PostgreSQL schema and Juneau's metadata tables, if necessary.
     """
     # Open the session
     Session = sessionmaker(bind=engine)
+    eng = engine.connect()
+
     session = Session()
 
     eng.execute(f"create schema if not exists {config.sql.dbs};")
@@ -68,9 +70,9 @@ def connect2db(dbname):
         engine = create_engine(
             f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}"
         )
-        eng = engine.connect()
-        create_tables_as_needed(engine, eng)
-        return eng
+        create_tables_as_needed(engine)
+        return engine.connect()
+
     except:
         engine = create_engine(
             f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/"
@@ -79,7 +81,7 @@ def connect2db(dbname):
         eng.connection.connection.set_isolation_level(0)
         eng.execute(f"create database {dbname};")
 
-        create_tables_as_needed(engine, eng)
+        create_tables_as_needed(engine)
         eng.connection.connection.set_isolation_level(1)
 
         engine = create_engine(
@@ -98,9 +100,9 @@ def connect2db_engine(dbname):
             isolation_level="AUTOCOMMIT"
         )
 
-        eng = engine.connect()
-        create_tables_as_needed(engine, eng)
-        eng.close()
+#        eng = engine.connect()
+        create_tables_as_needed(engine)
+#        eng.close()
 
         return engine
     except:
@@ -111,7 +113,7 @@ def connect2db_engine(dbname):
         eng.connection.connection.set_isolation_level(0)
         eng.execute("create database {dbname};")
 
-        create_tables_as_needed(engine, eng)
+        create_tables_as_needed(engine)
         eng.connection.connection.set_isolation_level(1)
         eng.close()
 
