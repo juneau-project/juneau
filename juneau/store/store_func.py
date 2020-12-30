@@ -1,12 +1,9 @@
 import logging
-from sqlalchemy import create_engine
 from sqlalchemy.exc import NoSuchTableError
-from data_extension.config import sql_dbs, sql_dbname
-from data_extension.store.store_prov import Store_Lineage
 from .store_table import SeparateStorage
 from .store_prov import LineageStorage
 from .store_graph import ProvenanceStorage
-from data_extension.table_db import connect2gdb
+from juneau.db.table_db import connect2gdb
 
 import sys
 

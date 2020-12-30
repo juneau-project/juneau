@@ -7,6 +7,7 @@ class LSHE:
     def __init__(self, psql_engine):
         self.psql_engine = psql_engine
 
+
     # query_col assumes that the domain to look at is already indexed into Postgres
     # schema, table, col specify the domain to query
     # q_sig is the schema where the signature vector of the query domain should be stored

@@ -19,7 +19,7 @@ class WithProv_Cached(SearchTables):
 
     def __connect2db_init(self):
         # Define our connection string
-        conn_string = "host='localhost' dbname=\'" + config.sql.dbname + "\' user=\'" + config.sql.name + \
+        conn_string = "host='localhost' port=" + str(config.sql.ports) + " dbname=\'" + config.sql.dbname + "\' user=\'" + config.sql.name + \
                       "\' password=\'" + config.sql.password + "\'"
 
         # logging.info the connection string we will use to connect
