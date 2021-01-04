@@ -2,13 +2,14 @@ sql:
   name: ${env:SQL_NAME,postgres}
   password: ${env:SQL_PASSWORD,habitat1}
   dbname: ${env:SQL_DBNAME,postgres}
-  host: ${env:SQL_HOST,localhost}
+  host: ${env:SQL_HOST, postgres}
   graph: ${env:SQL_GRAPH,graph_model}
   provenance: ${env:SQL_PROVENANCE,nb_provenance}
   dbs: ${env:SQL_DBS,rowstore}
+  ports: ${env:SQL_PORTS, 5432}
 neo:
   name: ${env:NEO_NAME,neo4j}
-  password: ${env:NEO_PASSWORD,habitat1}
+  password: ${env:NEO_PASSWORD,example_password}
   host: ${env:NEO_HOST,localhost:7474}
   db: ${env:NEO_DB,data}
 lshe:
