@@ -20,10 +20,12 @@ import ast
 import logging
 import queue
 import time
+import os
 
 import networkx as nx
 from py2neo import Graph
 from sqlalchemy import create_engine
+from sqlalchemy.sql import text
 from urllib3.exceptions import MaxRetryError
 
 from juneau.config import config
@@ -61,6 +63,17 @@ def create_tables_as_needed(engine):
     session.commit()
     session.close()
 
+def create_functions_as_needed(engine):
+
+    file_functions = ["lshe_initialize.sql", "minhash.sql", "corpus_construct_sig.sql", "corpus_construct_hash.sql",
+                      "q_construct_sig.sql", "q_construct_hash.sql", "q_query_lshe.sql", "q_query_ks.sql"]
+
+    with engine.connect() as con:
+        for file in file_functions:
+            file_fp = open(os.path.join("juneau/utils/sql", file), "r")
+            query = text(file_fp.read())
+            con.execute(query)
+    con.close()
 
 def connect2db(dbname):
     """
@@ -68,14 +81,15 @@ def connect2db(dbname):
     """
     try:
         engine = create_engine(
-            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}"
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/{dbname}"
         )
         create_tables_as_needed(engine)
+        create_functions_as_needed(engine)
         return engine.connect()
 
     except:
         engine = create_engine(
-            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/"
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/"
         )
         eng = engine.connect()
         eng.connection.connection.set_isolation_level(0)
@@ -85,7 +99,7 @@ def connect2db(dbname):
         eng.connection.connection.set_isolation_level(1)
 
         engine = create_engine(
-            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}"
+            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/{dbname}"
         )
         return engine.connect()
 
@@ -94,35 +108,40 @@ def connect2db_engine(dbname):
     """
     Connect to the PostgreSQL instance, creating it if necessary
     """
-    try:
-        engine = create_engine(
-            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}",
-            isolation_level="AUTOCOMMIT"
-        )
 
-#        eng = engine.connect()
-        create_tables_as_needed(engine)
-#        eng.close()
+    MAX_TRIES_ALLOWED = 10
+    while MAX_TRIES_ALLOWED > 0:
+        try:
+            try:
+                engine = create_engine(
+                    f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/{dbname}",
+                    isolation_level="AUTOCOMMIT"
+                )
+                create_tables_as_needed(engine)
+                return engine
+            except:
+                engine = create_engine(
+                    f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/"
+                )
+                eng = engine.connect()
+                eng.connection.connection.set_isolation_level(0)
+                eng.execute("create database {dbname};")
 
-        return engine
-    except:
-        engine = create_engine(
-            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/"
-        )
-        eng = engine.connect()
-        eng.connection.connection.set_isolation_level(0)
-        eng.execute("create database {dbname};")
+                create_tables_as_needed(engine)
+                eng.connection.connection.set_isolation_level(1)
+                eng.close()
 
-        create_tables_as_needed(engine)
-        eng.connection.connection.set_isolation_level(1)
-        eng.close()
-
-        engine = create_engine(
-            f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}/{dbname}",
-            isolation_level="AUTOCOMMIT"
-        )
-        return engine
-
+                engine = create_engine(
+                    f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/{dbname}",
+                    isolation_level="AUTOCOMMIT"
+                )
+                return engine
+        except MaxRetryError:
+            logging.warning("Could not connect to postgres. Sleeping and retrying...")
+            time.sleep(20)
+            MAX_TRIES_ALLOWED -= 1
+    else:
+        raise ValueError("Could not connect to postgres. Are you sure the credentials are correct?")
 
 def connect2gdb():
     """
@@ -131,7 +150,9 @@ def connect2gdb():
     MAX_TRIES_ALLOWED = 10
     while MAX_TRIES_ALLOWED > 0:
         try:
-            return Graph(f"http://{config.neo.name}:{config.neo.password}@{config.neo.host}/db/{config.neo.db}")
+            return Graph(f"http://{config.neo.host}/db/{config.neo.db}", auth=(config.neo.name, config.neo.password))
+            #return Graph(auth=(config.neo.name, config.neo.password), host = config.neo.host, scheme = "bolt")
+            #return Graph(f"http://{config.neo.name}:{config.neo.password}@{config.neo.host}/db/{config.neo.db}")
         except MaxRetryError:
             logging.warning("Could not connect to neo4j. Sleeping and retrying...")
             time.sleep(20)

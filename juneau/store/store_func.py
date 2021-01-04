@@ -3,7 +3,9 @@ from sqlalchemy.exc import NoSuchTableError
 from .store_table import SeparateStorage
 from .store_prov import LineageStorage
 from .store_graph import ProvenanceStorage
-from juneau.db.table_db import connect2gdb
+from .store_lshe import StoreLSHE
+from juneau.config import config
+from juneau.db.table_db import connect2gdb, connect2db_engine
 
 import sys
 
@@ -25,7 +27,8 @@ class Storage:
         self.eng = self.store_df_class.eng
         self.store_graph_class = ProvenanceStorage(self.eng, self.graph_eng)
         self.store_lineage_class = LineageStorage(self.eng)
-
+        self.store_lshe_class = StoreLSHE(connect2db_engine(config.sql.dbname))
+        self.store_lshe_class.store_schema()
         # to do : should keep a list to store indexed variable to avoid duplication
 
 
