@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from juneau.utils.utils import jaccard_similarity
+from data_extension.util import jaccard_similarity
 
 class Random_State:
 
@@ -9,6 +9,7 @@ class Random_State:
         self.tables = tables # a list of table names
     def save_a_state(self, state):
         self.state = state # a dictionary of feature:dataframe
+
 
 
 class Random_Components:

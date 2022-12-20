@@ -45,7 +45,7 @@ define([
             }
         },
         'types_to_exclude': ['module', 'function', 'builtin_function_or_method', 'instance', '_Feature']
-    }
+    };
 
     function execute_code(code, cell) {
         if (!cell.kernel) {
@@ -195,7 +195,8 @@ define([
                  shape_col_str + _trunc(listVar.varContent, cfg.cols.lenVar) +
                 '</code></td><td><button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode : 1 }) \" alt="Additional">&#10504;</button>' +
                 '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:2}) \" alt="Linkable">&#10238;</button>' +
-                '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \" alt="Semantically related">&approxeq;</button></td>' +
+                '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:3}) \" alt="Feature">&approxeq;</button>' +
+                '<button class=\'button\' onClick = \"Jupyter.notebook.events.trigger(\'searchTable\', {var_name : \'' + String(listVar.varName) + '\', kid: \'' + kernel_id + '\', mode:4}) \" alt="Cleaning">&#8621;</button></td>' +
                 '</tr>';
             }
         });
@@ -358,7 +359,7 @@ define([
                     kernel_config.varRefreshCmd, { iopub: { output: code_exec_callback } }, { silent: false }
                 );
             });
-    }
+    };
 
     /**
      * Index a table with a given name
@@ -430,15 +431,18 @@ define([
 
         var cells = Jupyter.notebook.get_cells()
         var clen = Jupyter.notebook.get_selected_cells_indices()[0]
+        var nb_name = Jupyter.notebook.notebook_path;
 
         var i;
         var cell_code = "";
+        var cell_id_count = 0;
         for (i = 0; i < clen; i++) {
             if(cells[i].cell_type === 'code'){
                 cell_code = cell_code + cells[i].get_text() + '\n';
+                cell_id_count = cell_id_count + 1;
             }
         }
-        var data_json = {'var': var_name, 'kid':kid, 'mode': mode, 'code':cell_code,
+        var data_json = {'var': var_name, 'kid':kid, 'mode': mode, 'code':cell_code, 'nb_name':nb_name,'cell_id':cell_id_count,
                             "_xsrf": getCookie("_xsrf")};
 
         $.ajax({

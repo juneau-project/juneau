@@ -1,11 +1,13 @@
 import sys
 import logging
-import pandas as pd
-import juneau.config as config
-from juneau.utils.utils import last_line_var, parse_code
-from juneau.db.table_db import pre_vars, generate_graph
+import ast
+import data_extension.config as cfg
+from data_extension.util import last_line_var, parse_code
+from data_extension.table_db import pre_vars, generate_graph
 
-from juneau.utils.utils import clean_notebook_name
+
+import pandas as pd
+
 
 class Query:
 
@@ -17,27 +19,22 @@ class Query:
             name = 'rtable' + name
 
         try:
-            table_r = pd.read_sql_table(name, conn, schema=config.sql.dbs)
+            table_r = pd.read_sql_table(name, conn, schema=cfg.sql_dbs)
             if 'Unnamed: 0' in table_r.columns:
                 table_r.drop(['Unnamed: 0'], axis=1, inplace=True)
-            conn.close()
             return table_r
 
         except KeyboardInterrupt:
-            conn.close()
             return None
         except ValueError:
             logging.info("Value error, skipping table " + name)
-            conn.close()
             return None
         except TypeError:
             logging.info("Type error, skipping table " + name)
-            conn.close()
             return None
         except:
             logging.info("Error, skipping table " + name)
             logging.error("Unexpected error:", sys.exc_info())
-            conn.close()
             return None
 
     def __generate_query_node_from_code(self, var_name, code):
@@ -48,11 +45,18 @@ class Query:
             code = '\n'.join([t for t in code.split('\n') if len(t) > 0 and t[0] != '%' and t[0] != '#'])
 
         code = '\''.join(code.split('\\\''))
+        #logging.info("2split code: " + str(code))
         code = code.split('\n')
+        #logging.info("3split code: " + str(code))
         dependency, _, all_code = parse_code(code)
+        #logging.info('All code ' + str(all_code))
+        #logging.info('Dependency ' + str(dependency))
         line_id = last_line_var(var_name, all_code)
+        #logging.info(line_id)
+        #dependency = parse_code(code)
         graph = generate_graph(dependency)
-
+        #logging.info("Output Graph")
+        #logging.info(list(graph.nodes))
 
         query_name = 'var_' + var_name + '_' + str(line_id)
         try:
@@ -61,14 +65,14 @@ class Query:
             query_node = None
         return query_node
 
-    def __init__(self, db_eng, cell_id, query_code, var_name, nb_name, query_df = None):
+    def __init__(self, db_eng, query_name, query_code, var_name, query_df = None):
 
         self.eng = db_eng
 
-        self.name = f"{cell_id}_{var_name}_{clean_notebook_name(nb_name)}"
+        self.name = query_name
 
         if query_df is None:
-            self.value = self.__read_table(self.name)
+            self.value = self.__read_table(query_name)
         else:
             self.value = query_df
 

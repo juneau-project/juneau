@@ -17,9 +17,9 @@ except ImportError:
 def _getsizeof(x):
     # return the size of variable x. Amended version of sys.getsizeof
     # which also supports ndarray, Series and DataFrame
-    if type(x).__name__ in ["ndarray", "Series"]:
+    if type(x).__name__ in ['ndarray', 'Series']:
         return x.nbytes
-    elif type(x).__name__ == "DataFrame":
+    elif type(x).__name__ == 'DataFrame':
         return x.memory_usage().sum()
     else:
         return getsizeof(x)
@@ -35,29 +35,13 @@ def _getshapeof(x):
 
 
 def var_dic_list():
-    types_to_exclude = [
-        "module",
-        "function",
-        "builtin_function_or_method",
-        "instance",
-        "_Feature",
-        "type",
-        "ufunc",
-    ]
-    types_to_include = ["list", "ndarray", "Series", "DataFrame"]
+    types_to_exclude = ['module', 'function', 'builtin_function_or_method',
+                        'instance', '_Feature', 'type', 'ufunc']
+    types_to_include = ['list', 'ndarray', 'Series', 'DataFrame']
     values = _nms.who_ls()
-    vardic = [
-        {
-            "varName": v,
-            "varType": type(eval(v)).__name__,
-            "varSize": str(_getsizeof(eval(v))),
-            "varShape": str(_getshapeof(eval(v))) if _getshapeof(eval(v)) else "",
-            "varContent": str(eval(v))[:200],
-        }  # noqa
-        for v in values
-        if (v not in ["_html", "_nms", "NamespaceMagics", "_Jupyter"])
-        & (type(eval(v)).__name__ in types_to_include)
-    ]  # noqa
+    vardic = [{'varName': v, 'varType': type(eval(v)).__name__, 'varSize': str(_getsizeof(eval(v))), 'varShape': str(_getshapeof(eval(v))) if _getshapeof(eval(v)) else '', 'varContent': str(eval(v))[:200]}  # noqa
+
+    for v in values if (v not in ['_html', '_nms', 'NamespaceMagics', '_Jupyter']) & (type(eval(v)).__name__ in types_to_include)] # noqa
     return json.dumps(vardic)
 
 

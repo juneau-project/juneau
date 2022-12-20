@@ -2,8 +2,8 @@ import logging
 import numpy as np
 import copy
 import pandas as pd
-from juneau.utils.utils import sigmoid, jaccard_similarity
-from juneau.search.search_prov_code import ProvenanceSearch
+from data_extension.util import sigmoid, jaccard_similarity
+from data_extension.search.search_prov_code import SearchProv
 
 class Sorted_State:
 
@@ -53,7 +53,7 @@ class Sorted_Components:
 
     def provenance_score(self, query, alpha):
 
-        prov_class = ProvenanceSearch(self.Graphs)
+        prov_class = SearchProv(self.Graphs)
 
         # Compute Provenance Similarity
         logging.info("Compute Provenance Similarity!")
@@ -312,3 +312,10 @@ class Sorted_Components:
         sa_state.save_a_state(sa_state_value)
 
         return rank_candidate, old_rank_candidate, sa_state
+
+
+
+
+
+
+
