@@ -33,6 +33,10 @@ setup(
         (
             "etc/jupyter/jupyter_notebook_config.d",
             ["jupyter-config/jupyter_notebook_config.d/juneau.json"]
+        ),
+        (
+            "etc/jupyter/jupyter_server_config.d",
+            ["jupyter-config/jupyter_server_config.d/juneau_server.json"]
         )
     ],
     scripts=[
