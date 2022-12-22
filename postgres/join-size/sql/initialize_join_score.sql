@@ -1,5 +1,6 @@
 SET search_path = utils;
 DROP TABLE IF EXISTS join_score_table;
+DROP TABLE IF EXISTS join_score_table2;
 
 CREATE TABLE join_score_table(
   "key" text,
