@@ -118,4 +118,13 @@ cc -fPIC -c -I /usr/include/postgresql/15/server/ ks.cpp hist.cpp evaluate.cpp
 cc -shared -o ks.so ks.o hist.o evaluate.o
 cd ../lshe
 cc -fPIC -c -I /usr/include/postgresql/15/server/ -Ifnv/ fnv/hash_64a.c evaluate.cpp hash.cpp lshe.cpp probability.cpp sig.cpp
+cc -shared -o lshe.so hash_64a.o evaluate.o hash.o lshe.o probability.o sig.o
+```
+
+Then run `psql -U postgres` and:
+
+```
+\i /juneau_funcs/join-size/sql/initialize_join_score.sql
+\i /juneau_funcs/sketch/sql/initialize_sketch.sql
+```
 ```
