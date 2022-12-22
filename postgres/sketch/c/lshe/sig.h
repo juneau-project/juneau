@@ -1,0 +1,1 @@
+u_int64_t* sig(char *ch_arr, int len, int num_hash);

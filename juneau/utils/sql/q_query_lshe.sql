@@ -6,7 +6,7 @@
  * compute the optimum valuse for k and l
  */
 CREATE OR replace FUNCTION compute_optkl(integer, integer, integer, integer, float8) RETURNS bigint[]
-	AS '/home/juneau/utils/sql/funcs', 'computeOptimalKL'
+	AS '/juneau_funcs/lshe', 'computeOptimalKL'
 	LANGUAGE c;
 
 /*
