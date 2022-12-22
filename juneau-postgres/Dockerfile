@@ -30,6 +30,4 @@ RUN cc -shared -o lshe.so hash_64a.o evaluate.o hash.o lshe.o probability.o sig.
 
 ENV POSTGRES_DB="postgres"
 
-RUN psql -U postgres -f /juneau_funcs/join-size/sql/initialize_join_score.sql
-
-RUN psql -U postgres /juneau_funcs/sketch/sql/initialize_sketch.sql
+COPY init-user-db.sh /docker-entrypoint-initdb.d/
