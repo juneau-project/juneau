@@ -39,6 +39,8 @@ docker-compose:
 docker-compose -f docker/docker-compose.yaml up
 ```
 
+* Copy `juneau/config-simple.py` to `juneau/config.py`
+
 That's it! As you would normally do, head over to the link that Jupyter will show on the terminal.
 
 
@@ -48,22 +50,22 @@ Install Docker, including docker-compose, for your preferred operating system.
 
 * Download [this file](https://bitbucket.org/penndb/pennprov/raw/f6fa02fdebdd1bf99a6abc25f56b9dcaf4d28e26/docker-container/docker-compose.yml) for Docker-Compose
 * Run `docker-compose up` from the directory.
-* Copy `juneau/config-default.py` to `juneau/config.py`
+* Copy `juneau/config-mprov.py` to `juneau/config.py`
 
-These will use the default user IDs and passwords that exist in `config.yaml`.
+These will use the default user IDs and passwords that exist in `config.yaml`.  You should change the password 
 
 #### Custom Version
 
 First, be sure you have installed:
 
-* PostgreSQL, version 10 or later
+* PostgreSQL, version 12 or later
 * Neo4J 3.3, version or later
 
 Then set up a default user ID and password for each: 
 
 * Run `sudo -u postgres psql` and then enter `\password`.  Set a password for the account (by default this is assumed to be `habitat1`).
 * Open your browser to `localhost:7474` and change the password on the `neo4j` password, by default to `habitat1`.
-* Copy `juneau/config-default.py` to `juneau/config.py` 
+* Copy `juneau/config-mprov.yaml` to `juneau/config.yaml` 
 
 Now either edit the YAML file in `juneau/config/config.yaml` to match your password and account info or
 change the environment variables in your terminal.
@@ -88,5 +90,32 @@ See the [Developer's Guide](docs/Developers.md) for details.
 
 * `sudo -H python setup.py install`
 * `sudo -H jupyter serverextension enable --py juneau`
-* `jupyter nbextension install dataset_inspector / --user`
+* `jupyter nbextension install dataset_inspector --user`
 * `jupyter nbextension enable dataset_inspector/main --user`
+
+### Install SQL UDFs
+
+Copy the `postgres` directory into your `hab-postgres` docker container:
+
+* `docker cp join-size/ docker-container_postgres_1:/juneau_funcs`
+* `docker cp sketch/ docker-container_postgres_1:/juneau_funcs`
+
+
+Log into your `hab-postgres` container with the interactive terminal:
+
+```
+apt update
+apt install -y postgresql-server-dev-15
+apt install -y gcc g++
+
+mkdir /juneau_funcs/
+cd /juneau_funcs/
+cd join_size/c
+cc -fPIC -c -I /usr/include/postgresql/15/server/ join_score.cpp score.cpp
+cc -shared -o join_score.so join_score.o score.o
+cd ../../sketch/c/ks
+cc -fPIC -c -I /usr/include/postgresql/15/server/ ks.cpp hist.cpp evaluate.cpp
+cc -shared -o ks.so ks.o hist.o evaluate.o
+cd ../lshe
+cc -fPIC -c -I /usr/include/postgresql/15/server/ -Ifnv/ fnv/hash_64a.c evaluate.cpp hash.cpp lshe.cpp probability.cpp sig.cpp
+```
