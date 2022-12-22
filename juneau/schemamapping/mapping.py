@@ -1,12 +1,11 @@
 import pandas as pd
 import numpy as np
-from data_extension.util import jaccard_similarity
+from juneau.utils.utils import jaccard_similarity
 
 class Map:
 
-#    def __init__(self):
-
-    def mapping(self, tableA, tableB, Mpair = {}, MpairR = {}):
+    @staticmethod
+    def mapping(tableA, tableB, Mpair = {}, MpairR = {}):
 
         matching = []
 

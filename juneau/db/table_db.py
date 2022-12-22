@@ -79,13 +79,12 @@ def connect2db(dbname):
     """
     Connects to the PostgreSQL instance, creating it if necessary.
     """
+    conn = None
     try:
         engine = create_engine(
             f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/{dbname}"
         )
-        create_tables_as_needed(engine)
-        create_functions_as_needed(engine)
-        return engine.connect()
+        conn = engine.connect()
 
     except:
         engine = create_engine(
@@ -95,13 +94,15 @@ def connect2db(dbname):
         eng.connection.connection.set_isolation_level(0)
         eng.execute(f"create database {dbname};")
 
-        create_tables_as_needed(engine)
         eng.connection.connection.set_isolation_level(1)
-
         engine = create_engine(
             f"postgresql://{config.sql.name}:{config.sql.password}@{config.sql.host}:{config.sql.ports}/{dbname}"
         )
-        return engine.connect()
+        conn = engine.connect()
+
+    create_tables_as_needed(engine)
+    create_functions_as_needed(engine)
+    return conn
 
 
 def connect2db_engine(dbname):

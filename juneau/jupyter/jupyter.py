@@ -1,147 +1,108 @@
-import subprocess
-import sys
-import site
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+This module is in charge of defining functions that will
+interact with the Jupyter kernel.
+"""
+
 import logging
+import os
+import subprocess
+from threading import Lock
 
-# logging.basicConfig(level=logging.DEBUG)
-
-import sys
-
+from jupyter_client import BlockingKernelClient
 from jupyter_client import find_connection_file
-from jupyter_client import MultiKernelManager, BlockingKernelClient, KernelClient
 
-from data_extension.file_lock import FileLock
-from queue import Empty
-import data_extension.config as cfg
-
-TIMEOUT = 6
-jupyter_lock = FileLock('my.lock')
+jupyter_lock = Lock()
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+# FIXME: Why are we printing a variable and calling `.to_json()`? If the type
+#        of var is a list, this will throw an error because `.to_json()` is not a list function.
 def request_var(kid, var):
     """
-    Request the contents of a dataframe or matrix
-
-    :param kid:
-    :param var:
-    :return: Tuple with first parameter being JSON form of output, 2nd parameter being error if
-             1st is None
+    Requests the contents of a dataframe or matrix by executing some code.
     """
-    code = "import pandas as pd\nimport numpy as np\nif type(" + var + ") " \
-                                                                       "is pd.DataFrame or type(" + var + ") is np.ndarray or type(" + var + ") is list:\n"
-    code = code + "\tprint(" + var + ".to_json(orient='split', index = False))\n"
-    return exec_code(kid, var, code)
+    code = f"""
+        import pandas as pd
+        import numpy as np
+        if isinstance({var}, pd.DataFrame) or isinstance({var}, np.ndarray) or isinstance({var}, list):
+            print({var}.to_json(orient='split', index=False))
+        """
+    return exec_code(kid, code)
 
 
-def connect_psql(kid, var):
+def exec_code(kid, code):
     """
-    Create a juneau_connect() function for use in the notebook
+    Executes arbitrary `code` in the kernel with id `kid`.
 
-    :param kid:
-    :param var:
-    :return:
+    Returns:
+        - tuple: the output of the code and the error, if any.
     """
-    code = 'from sqlalchemy import create_engine\n' + \
-        'user_name = \'' + cfg.sql_name + '\'\n' + \
-        'password = \'' + cfg.sql_password + '\'\n' + \
-        'dbname = \'' + cfg.sql_dbname + '\'\n' + \
-        'def juneau_connect():\n\tengine = create_engine(\'postgresql://\' + user_name + \':\' + password + \'@localhost/\' + dbname,connect_args={\'options\': \'-csearch_path={}\'.format("' + cfg.sql_dbs + '")})\n\treturn engine.connect()';
-    return exec_code(kid, var, code)
+    # Load connection info and init communications.
+    cf = find_connection_file(kid)
 
-
-def exec_code(kid, var, code):
-    # load connection info and init communication
-    cf = find_connection_file(kid)  # str(port))
-
-    global jupyter_lock
-
-    jupyter_lock.acquire()
-    try:
+    with jupyter_lock:
         km = BlockingKernelClient(connection_file=cf)
         km.load_connection_file()
         km.start_channels()
-
-        # logging.debug('Executing:\n' + str(code))
         msg_id = km.execute(code, store_history=False)
-
         reply = km.get_shell_msg(msg_id, timeout=60)
-        # logging.info('Execution reply:\n' + str(reply))
-        state = 'busy'
+        output, error = None, None
 
-        output = None
-        idle_count = 0
-        try:
-            while km.is_alive():
-                try:
-                    msg = km.get_iopub_msg(timeout=10)
-                    # logging.debug('Read ' + str(msg))
-                    if not 'content' in msg:
-                        continue
-                    if 'name' in msg['content'] and msg['content']['name'] == 'stdout':
-                        # logging.debug('Got data '+ msg['content']['text'])
-                        output = msg['content']['text']
-                        break
-                    if 'execution_state' in msg['content']:
-                        # logging.debug('Got state')
-                        state = msg['content']['execution_state']
-                    if state == 'idle':
-                        idle_count = idle_count + 1
-                except Empty:
-                    pass
-        except KeyboardInterrupt:
-            logging.error('Keyboard interrupt')
-            pass
-        finally:
-            # logging.info('Kernel IO finished')
-            km.stop_channels()
+        while km.is_alive():
+            msg = km.get_iopub_msg(timeout=10)
+            if (
+                "content" in msg
+                and "name" in msg["content"]
+                and msg["content"]["name"] == "stdout"
+            ):
+                output = msg["content"]["text"]
+                break
 
-        # logging.info(str(output))
-        error = ''
-        if reply['content']['status'] != 'ok':
-            logging.error('Status is ' + reply['content']['status'])
-            logging.error(str(output))
+        km.stop_channels()
+        if reply["content"]["status"] != "ok":
+            logging.error(f"Status is {reply['content']['status']}")
+            logging.error(output)
             error = output
             output = None
-    finally:
-        jupyter_lock.release()
 
     return output, error
 
 
-# Execute via IPython kernel
-def exec_ipython(kernel_id, search_var, py_file):
-    global jupyter_lock
+def exec_connection_to_psql(kernel_id):
+    """
+    Runs the `connect_psql.py` script inside the Jupyter kernel.
+    Args:
+        kernel_id: The kernel id.
 
-    jupyter_lock.acquire()
-    try:
-        logging.debug('Exec ' + py_file)
-        file_name = site.getsitepackages()[0] + '/data_extension/' + py_file + '.py'
-        try:
-            if sys.version_info[0] >= 3:
-                msg_id = subprocess.Popen(['python3', file_name, \
-                                           kernel_id, search_var], \
-                                          stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            else:
-                msg_id = subprocess.Popen(['python', file_name, \
-                                           kernel_id, search_var], \
-                                          stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        except FileNotFoundError:
-            msg_id = subprocess.Popen(['python', file_name, \
-                                       kernel_id, search_var], \
-                                      stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-
+    Returns:
+        tuple - the output of the code, and the error if any.
+    """
+    with jupyter_lock:
+        psql_connection = os.path.join(os.path.join(BASE_DIR, "db"), "connect_psql.py")
+        msg_id = subprocess.Popen(
+            ["python3", psql_connection, kernel_id],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
         output, error = msg_id.communicate()
-    finally:
-        jupyter_lock.release()
 
-    if sys.version[0] == '3':
-        output = output.decode("utf-8")
-        error = error.decode("utf-8")
-    output = output.strip('\n')
-
+    output = output.decode("utf-8")
+    error = error.decode("utf-8")
     msg_id.stdout.close()
     msg_id.stderr.close()
-
-    logging.debug(output)
 
     return output, error

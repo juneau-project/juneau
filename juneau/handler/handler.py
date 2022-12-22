@@ -1,388 +1,167 @@
-from notebook.utils import url_path_join
-from notebook.base.handlers import IPythonHandler
+# Copyright 2020 Juneau
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import json
-import pandas as pd
-
-from data_extension.search.search_withprov_sk import WithProv_Cached
-from data_extension.search import search_tables
-import data_extension.jupyter
-from data_extension.table_db import connect2gdb
-from data_extension.table_db import connect2db_engine
-from data_extension.store.store_graph import Store_Provenance
-from data_extension.store.store_prov import Store_Lineage
-
-from data_extension.schema_mapping.schemamapping import SchemaMapping
-#from data_extension.config import sql_dbname, sql_graph, sql_name, sql_password, sql_dbs
-
-import sqlalchemy
-from sqlalchemy.exc import NoSuchTableError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Numeric
-from sqlalchemy.orm import sessionmaker
-#from multiprocessing import Pool, TimeoutError
-import concurrent.futures
-
-import os
-import sys
-
-#if sys.version_info[0] < 3:
-#    from StringIO import StringIO
-#else:
-
 import logging
-# from multiprocessing import Pool, TimeoutError
-import concurrent.futures
-import json
-import logging
-import os
-import sys
 
 import pandas as pd
-import sqlalchemy
 from notebook.base.handlers import IPythonHandler
-from notebook.utils import url_path_join
-from sqlalchemy import Column, Integer, String, Numeric
-from sqlalchemy.exc import NoSuchTableError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
-import data_extension.jupyter
-from data_extension.schema_mapping.schemamapping import SchemaMapping
-
-from data_extension.search import search_tables
-from data_extension.search.search_withprov_sk import WithProv_Cached
-from data_extension.table_db import connect2db_engine
-from data_extension.util import handle_superlong_nbname
-from data_extension.variable import Var_Info
-from data_extension.store.store import Storage
-
-# from data_extension.config import sql_dbname, sql_graph, sql_name, sql_password, sql_dbs
-# if sys.version_info[0] < 3:
-#    from StringIO import StringIO
-# else:
-
-#logging.basicConfig(level=logging.DEBUG)
-
-HERE = os.path.dirname(__file__)
-
-import data_extension.config as cfg
-
-stdflag = False
-pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)#Pool(processes=2)
-indexed = {}
-nb_cell_id_node = {}
-
-types_to_exclude = [ \
-    'module', \
-    'function', \
-    'builtin_function_or_method', \
-    'instance', \
-    '_Feature', \
-    'type', \
-    'ufunc']
-
-types_to_include = [ \
-    'ndarray', \
-    'DataFrame', \
-    'list']
-
-search_test_class = None
-
-
-
-# From https://stackoverflow.com/questions/31997859/bulk-insert-a-pandas-dataframe-using-sqlalchemy
-def write_df(engine, df_to_be_written, table_name, my_schema):
-    Base = declarative_base()
-
-    # Declaration of the class in order to write into the database. This structure is standard and should align with SQLAlchemy's doc.
-    class Current(Base):
-        __tablename__ = table_name
-
-        id = Column(Integer, primary_key=True)
-        Date = Column(String(500))
-        Type = Column(String(500))
-        Value = Column(Numeric())
-
-        def __repr__(self):
-            return "(id='%s', Date='%s', Type='%s', Value='%s')" % (self.id, self.Date, self.Type, self.Value)
-
-    # The orient='records' is the key of this, it allows to align with the format mentioned in the doc to insert in bulks.
-    listToWrite = df_to_be_written.to_dict(orient='records')
-
-    metadata = sqlalchemy.schema.MetaData(bind=engine, reflect=True)
-    table = sqlalchemy.Table(table_name, metadata, autoload=True, schema=my_schema)
-
-    # Open the session
-    Session = sessionmaker(bind=engine)
-    conn = engine.connect()
-    session = Session()
-
-    logging.info("Starting with drop, create, insert")
-    # Inser the dataframe into the database in one bulk
-    try:
-        conn.execute(table.drop())
-    except:
-        pass
-
-    try:
-        conn.execute(table.create())
-    except:
-        pass
-
-    try:
-        conn.execute(table.insert(), listToWrite)
-    except:
-        logging.error("Could not insert into table")
-
-    # Commit the changes
-    session.commit()
-
-    # Close the session
-    session.close()
-    conn.close()
+from juneau.config import config
+from juneau.db.table_db import connect2db_engine, connect2gdb
+from juneau.jupyter import jupyter
+from juneau.search.search import search_tables
+from juneau.store.variable import Var_Info
+from juneau.store.store_func import Storage
+from juneau.search.query import Query
 
 class JuneauHandler(IPythonHandler):
-    kernel_id = None
-    search_var = None
-    done = {}
-    code = None
-    mode = None
-    dbinfo = {}
-    data = {}
-    data_trans = {}
-    graph_db = None
-    psql_engine = None
-    storage_class = None
-    prev_node = None
-    prev_nb = ""
-    data_to_store = {}
+    """
+    The Juneau Handler that coordinates the notebook server app instance. Essentially,
+    this class is in charge of communicating the frontend with the backend via PUT and POST.
+    """
 
     def initialize(self):
-        #logging.info('Calling Juneau handler...')
-        # self.search_test_class = WithProv(dbname, 'rowstore')
-        pass
+        """
+        Initializes all the metadata related to a table in a Jupyter Notebook.
+        Note we use `initialize()` instead of `__init__()` as per Tornado's docs:
+        https://www.tornadoweb.org/en/stable/web.html#request-handlers
 
-    def find_variable(self, search_var, kernel_id):
-        # Make sure we have an engine connection in case we want to read
-        if kernel_id not in self.done:
-            o2, err = data_extension.jupyter.exec_ipython( \
-                kernel_id, search_var, 'connect_psql')
-            # o2, err = data_extension.jupyter.connect_psql(kernel_id, search_var)
-            self.done[kernel_id] = {}
+        The metadata related to the table is:
+            - var: the name of the variable that holds the table.
+            - kernel_id: the id of the kernel that executed the table.
+            - cell_id: the id of the cell that created the table.
+            - code: the actual code associated to creating the table.
+            - mode: TODO
+            - nb_name: the name of the notebook.
+            - done: TODO
+            - data_trans: TODO
+            - graph_db: the Neo4J graph instance.
+            - psql_engine: Postgresql engine.
+            - store_graph_db_class: TODO
+            - store_prov_db_class: TODO
+            - prev_node: TODO
+
+        Notes:
+            Depending on the type of request (PUT/POST), some of the above will
+            be present or not. For instance, the notebook name will be present
+            on PUT but not on POST. That is why we check if the key is present in the
+            dictionary and otherwise assign it to `None`.
+
+            This function is called on *every* request.
+
+        """
+        data = self.request.arguments
+        self.var = data["var"][0].decode("utf-8")
+        self.kernel_id = data["kid"][0].decode("utf-8")
+        self.code = data["code"][0].decode("utf-8")
+        self.cell_id = (
+            int(data["cell_id"][0].decode("utf-8")) if "cell_id" in data else None
+        )
+        self.mode = int(data["mode"][0].decode("utf-8")) if "mode" in data else None
+        self.nb_name = data["nb_name"][0].decode("utf-8") if "nb_name" in data else None
+
+        self.done = set()
+        self.data_trans = {}
+        self.store_class = Storage()
+
+    def find_variable(self):
+        """
+        Finds and tries to return the contents of a variable in the notebook.
+
+        Returns:
+            tuple - the status (`True` or `False`), and the variable if `True`.
+        """
+        # Make sure we have an engine connection in case we want to read.
+        if self.kernel_id not in self.done:
+            o2, err = jupyter.exec_connection_to_psql(self.kernel_id)
+            self.done.add(self.kernel_id)
             logging.info(o2)
             logging.info(err)
 
-        logging.info('Looking up variable ' + search_var)
+        logging.info(f"Looking up variable {self.var}")
+        output, error = jupyter.request_var(self.kernel_id, self.var)
+        logging.info("Returned with variable value.")
 
-
-        output, error = data_extension.jupyter.request_var(kernel_id, search_var)
-        #output, error = data_extension.jupyter.exec_ipython(kernel_id, search_var, 'print_var')
-        logging.info('Returned with variable value.')
-
-        if error != "" or output == "" or output is None:
+        if error or not output:
             sta = False
             return sta, error
         else:
             try:
-                var_obj = pd.read_json(output, orient='split')
+                var_obj = pd.read_json(output, orient="split")
                 sta = True
-            except:
-                logging.info('Parsing: ' + output)
-                sta = False
+            except Exception as e:
+                logging.error(f"Found error {e}")
                 var_obj = None
+                sta = False
 
         return sta, var_obj
 
-    def fetch_kernel_id(self):
-        self.kernel_id = str(self.data['kid'][0])[2:-1]
-
-    def fetch_search_var(self):
-        self.search_var = str(self.data['var'][0])[2:-1]
-
-    def fetch_search_mode(self):
-        self.mode = int(self.data['mode'][0])
-
-    def fetch_code(self):
-        self.code = str(self.data['code'][0])[2:-1]
-
-    def fetch_dbinfo(self):
-        self.dbinfo = {'dbnm': cfg.sql_dbname, \
-                       'host': cfg.sql_host, \
-                       'user': cfg.sql_name, \
-                       'pswd': cfg.sql_password, \
-                       'schema': cfg.sql_dbs}
-
-    def init_storage_class(self):
-
-        if not self.psql_engine:
-            self.psql_engine = connect2db_engine(cfg.sql_dbname)
-
-        self.storage_class = Storage(eng=self.psql_engine)
-
-
     def put(self):
+        logging.info(f"Juneau indexing request: {self.var}")
+        logging.info(f"Stored tables: {self.application.indexed}")
 
-        global pool
-        global indexed
-        global fn
-        global nb_cell_id_node
+        new_var = Var_Info(self.var, self.cell_id, self.nb_name, self.code)
 
-        self.data_to_store = self.request.arguments
-
-        if len(self.data_to_store) == 0:
-            self.data_trans = {'res': "", 'error': "Invalid request", 'state': str('false')}
-            self.write(json.dumps(self.data_trans))
-            return
-
-        var_to_store = str(self.data_to_store['var'][0])[2:-1]
-        logging.info('Juneau indexing request: ' + var_to_store)
-
-        var_code = str(self.data_to_store['code'][0])[2:-1].strip("\\n#\\n")
-        var_nb_name = str(self.data_to_store['nb_name'][0])[2:-1]
-        var_cell_id = int(str(self.data_to_store['cell_id'][0])[2:-1])
-        kernel_id = str(self.data_to_store['kid'][0])[2:-1]
-
-        var_nb_name = var_nb_name.replace('.ipynb', '')
-        var_nb_name = var_nb_name.replace('-', '')
-        var_nb_name = var_nb_name.split("_")
-        var_nb_name = "".join(var_nb_name)
-        var_nb_name = handle_superlong_nbname(var_nb_name)
-
-
-        code_list = var_code.split("\\n#\\n")
-
-        store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
-
-        logging.info("stored table: " + str(indexed))
-
-        if (store_table_name in indexed):
-            logging.info('Request to index is already registered.')
-        elif var_to_store not in code_list[-1]:
-            logging.info('Not a variable in the current cell.')
-
+        if new_var.store_name in self.application.indexed:
+            logging.info("Request to index is already registered.")
+        elif new_var.var_name not in new_var.code_list[-1]:
+            logging.info("Not a variable in the current cell.")
         else:
-            logging.info("Start to store "+ var_to_store)
-            success, output = self.find_variable(var_to_store, kernel_id)
+            logging.info(f"Starting to store {new_var.var_name}")
+            success, output = self.find_variable()
 
             if success:
-                logging.info("Get Value of " + var_to_store)
+                logging.info(f"Getting value of {new_var.var_name}")
                 logging.info(output.head())
 
-                self.init_storage_class()
+                new_var.get_value(output)
 
-                self.prev_node = None
-                if var_nb_name not in nb_cell_id_node:
-                    self.prev_node = None
-                    nb_cell_id_node[var_nb_name] = {}
-
-                for cid in range(var_cell_id - 1, -1, -1):
-                    if cid in nb_cell_id_node[var_nb_name]:
-                        self.prev_node = nb_cell_id_node[var_nb_name][cid]
-                        break
-
-                new_var = Var_Info(var_to_store, var_cell_id, store_table_name, var_nb_name, output, var_code,
-                                   code_list, self.prev_node)
-
-                sm = SchemaMapping(cfg.sql_dbname, False)
-                sm.loading_index(cfg.sql_dbname)
-                self.prev_node = self.storage_class.store_table(new_var, sm)
-                sm.dump_index()
-
-                if var_cell_id not in nb_cell_id_node[var_nb_name]:
-                    nb_cell_id_node[var_nb_name][var_cell_id] = self.prev_node
-
-
-                #res = pool.submit(fn, output, store_table_name, var_code, var_nb_name, \
-                #                            self.psql_engine, self.store_prov_db_class)
-
-                #res.result()
+                if new_var.nb not in self.application.nb_cell_id_node:
+                    self.application.nb_cell_id_node[new_var.nb] = {}
+                try:
+                    new_var.get_prev_node(self.application.nb_cell_id_node)
+                    self.prev_node = self.store_class.store_table(new_var, self.application.schema_mapping_class)
+                    if new_var.cid not in self.application.nb_cell_id_node[new_var.nb]:
+                        self.application.nb_cell_id_node[new_var.nb][new_var.cid] = self.prev_node
+                except Exception as e:
+                    logging.error(f"Unable to store in graph store due to error {e}")
             else:
-                logging.error("find variable failed!")
+                logging.error("Find variable failed!")
 
-        self.data_trans = {'res': "", 'state': str('true')}
+        self.data_trans = {"res": "", "state": str("true")}
         self.write(json.dumps(self.data_trans))
 
     def post(self):
-
-        # Check if we are initialized yet
-        global search_test_class
-        if not search_test_class:
-            self.data_trans = {'error': 'The Juneau server is still initializing', \
-                               'state': str('false')}
-            self.write(json.dumps(self.data_trans))
-            return
-
-        logging.info('Juneau handling search request')
-        self.data = self.request.arguments
-        self.fetch_search_var()
-        self.fetch_kernel_id()
-        self.fetch_search_mode()
-
+        logging.info("Juneau handling search request")
         if self.mode == 0:  # return table
-            if self.search_var in search_test_class.real_tables:
-                self.data_trans = {'res': "", 'state': str('true')}
-                self.write(json.dumps(self.data_trans))
-            else:
-                self.data_trans = {'res': "", 'state': str('false')}
-                self.write(json.dumps(self.data_trans))
+            self.data_trans = {
+                "res": "",
+                "state": self.var in self.application.search_test_class.real_tables,
+            }
+            self.write(json.dumps(self.data_trans))
         else:
-            self.fetch_code()
-
-            success, output = self.find_variable(self.search_var, self.kernel_id)
-
-            sm = SchemaMapping(cfg.sql_dbname, False)
-
+            success, output = self.find_variable()
             if success:
-
-                var_cell_id = int(str(self.data['cell_id'][0])[2:-1])
-                #kernel_id = str(self.data_to_store['kid'][0])[2:-1]
-
-                var_nb_name = str(self.data['nb_name'][0])[2:-1]
-                var_nb_name = var_nb_name.replace('.ipynb', '')
-                var_nb_name = var_nb_name.replace('-', '')
-                var_nb_name = var_nb_name.split("_")
-                var_nb_name = "".join(var_nb_name)
-                var_nb_name = handle_superlong_nbname(var_nb_name)
-                var_to_store = str(self.data['var'][0])[2:-1]
-
-
-                store_table_name = str(var_cell_id) + "_" + var_to_store + "_" + str(var_nb_name)
-                data_json = search_tables(search_test_class, sm, output, self.mode, self.code, store_table_name, var_to_store)
-                if data_json != "":
-                    self.data_trans = {'res': data_json, 'state': str('true')}
-                    self.write(json.dumps(self.data_trans))
-                else:
-                    self.data_trans = {'res': data_json, 'state': str('false')}
-                    self.write(json.dumps(self.data_trans))
-
+                codes = "\\n".join(self.code.strip("\\n#\\n").split("\\n#\\n"))
+                query = Query(self.application.search_test_class.eng, self.cell_id, codes, self.var, self.nb_name, output)
+                data_json = search_tables(
+                    self.application.search_test_class, self.application.schema_mapping_class, self.mode, query)
+                self.data_trans = {"res": data_json, "state": data_json != ""}
+                self.write(json.dumps(self.data_trans))
             else:
-                logging.error("The table was not found:")
-                logging.error(output)
-                self.data_trans = {'error': str(output), 'state': str('false')}
+                logging.error(f"The table was not found: {output}")
+                self.data_trans = {"error": output, "state": False}
                 self.write(json.dumps(self.data_trans))
 
-
-def background_load(nb_server_app):
-    global search_test_class
-    search_test_class = WithProv_Cached(cfg.sql_dbname, False, cfg.sql_dbs)
-    nb_server_app.log.info("Juneau tables indexed...")
-
-
-def load_jupyter_server_extension(nb_server_app):
-    """
-    Called when the extension is loaded.
-
-    Args:
-        nb_server_app (NotebookWebApplication): handle to the Notebook webserver instance.
-    """
-    nb_server_app.log.info("Juneau extension loading...")
-    # search_test_class = WithProv_Optimized(cfg.sql_dbname, cfg.sql_dbs)
-    #loader = threading.Thread(target=background_load, args=(nb_server_app,))
-    background_load(nb_server_app)
-    web_app = nb_server_app.web_app
-    host_pattern = r'.*$'
-    route_pattern = url_path_join(web_app.settings['base_url'], '/juneau')
-    web_app.add_handlers(host_pattern, [(route_pattern, JuneauHandler)])
-    nb_server_app.log.info("Juneau extension loaded!")
-    #loader.start()

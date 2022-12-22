@@ -114,24 +114,24 @@ DROP FUNCTION IF EXISTS ks_evaluate;
 -- create C functions
 -- lshe
 CREATE OR REPLACE FUNCTION hash(s text, numHash integer) RETURNS int2[]
-  AS '/Library/PostgreSQL/12/include/postgresql/server/lshe', 'pg_hash'
+  AS '/juneau_funcs/sketch/c/lshe/lshe', 'pg_hash'
   LANGUAGE C;
 
 CREATE OR REPLACE FUNCTION lshe_evaluate(c_hash int2[], q_hash int2[], k integer, opt_k integer, opt_l integer) RETURNS boolean
-  AS '/Library/PostgreSQL/12/include/postgresql/server/lshe', 'pg_evaluate'
+  AS '/juneau_funcs/sketch/c/lshe/lshe', 'pg_evaluate'
   LANGUAGE C;
 
 CREATE OR REPLACE FUNCTION optkl(k integer, l integer, x integer, q integer, t float8) RETURNS int2[]
-  AS '/Library/PostgreSQL/12/include/postgresql/server/lshe', 'pg_optimal_kl'
+  AS '/juneau_funcs/sketch/c/lshe/lshe', 'pg_optimal_kl'
   LANGUAGE C;
 
 -- ks
 CREATE OR REPLACE FUNCTION hist_int(arr bigint[], num_digits int) RETURNS bigint[]
-  AS '/Library/PostgreSQL/12/include/postgresql/server/ks', 'pg_hist_int'
+  AS '/juneau_funcs/sketch/c/ks/ks', 'pg_hist_int'
   LANGUAGE C;
 
 CREATE OR REPLACE FUNCTION hist_float(arr double precision[], num_digits int) RETURNS bigint[]
-  AS '/Library/PostgreSQL/12/include/postgresql/server/ks', 'pg_hist_float'
+  AS '/juneau_funcs/sketch/c/ks/ks', 'pg_hist_float'
   LANGUAGE C;
 
 -- CREATE OR REPLACE FUNCTION hist_int(arr bigint[], num_digits int) RETURNS bigint[]
@@ -147,7 +147,7 @@ CREATE OR REPLACE FUNCTION hist_float(arr double precision[], num_digits int) RE
 --   LANGUAGE C;
 
 CREATE OR REPLACE FUNCTION ks_evaluate(h1 bigint[], h2 bigint[], t float) RETURNS boolean
-  AS '/Library/PostgreSQL/12/include/postgresql/server/ks', 'pg_ks_evaluate'
+  AS '/juneau_funcs/sketch/c/ks/ks', 'pg_ks_evaluate'
   LANGUAGE C;
 
 -- drop plpgsql functions

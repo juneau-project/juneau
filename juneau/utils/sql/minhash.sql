@@ -12,12 +12,12 @@
  * 3rd agrument: index of the minHash function to be used
  */
 CREATE OR REPLACE FUNCTION min_hash_char(character varying, integer, integer) RETURNS bigint
-  AS '/home/juneau/utils/sql/funcs', 'min_hash_char'
+  AS '/juneau_funcs/minhash', 'min_hash_char'
   LANGUAGE c STRICT;
 
 /*
  * computes the hash keys given the input array of integers
  */
 CREATE OR REPLACE FUNCTION min_hash_array(bigint[]) RETURNS bigint[]
-	AS '/home/juneau/utils/sql/funcs', 'min_hash_array_new'
+	AS '/juneau_funcs/minhash', 'min_hash_array_new'
 	LANGUAGE c STRICT;

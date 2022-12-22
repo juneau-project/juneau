@@ -8,14 +8,14 @@
  * compute the KS Unionability Score for two arrays of type bigint
  */
 CREATE OR REPLACE FUNCTION compute_ks_score(a1 bigint[], a2 bigint[]) RETURNS float8
-  AS '/home/juneau/utils/sql/funcs', 'computeKSInt'
+  AS '/juneau_funcs/ks', 'computeKSInt'
   LANGUAGE c STRICT;
 
 /*
  * compute the KS Unionability Score for two arrays of type double precision
  */
 CREATE OR REPLACE FUNCTION compute_ks_score(a1 double precision[], a2 double precision[]) RETURNS float8
-	AS '/home/juneau/utils/sql/funcs', 'computeKSFloat'
+	AS '/juneau_funcs/ks', 'computeKSFloat'
   LANGUAGE c STRICT;
 
 /*

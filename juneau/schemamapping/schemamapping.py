@@ -5,9 +5,9 @@ import timeit
 import numpy as np
 import pandas as pd
 
-from data_extension.schema_mapping.mapping import Map
-from data_extension.schema_mapping.mapping_index import Map_Profile
-from data_extension.util import jaccard_similarity
+from .mapping import Map
+from .mappingprofile import Map_Profile
+from juneau.utils.utils import jaccard_similarity
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -17,18 +17,13 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 registered_attribute = ['last_name', 'first_name', 'full_name', 'gender', 'age', 'email', 'ssn', 'address']
 
 
-class SchemaMapping:
+class SchemaMapping(Map):
 
-    def __init__(self, dbname, sflg, sim_thres = 0.5):
+    def __init__(self, sim_thres = 0.5):
 
         self.sim_thres = sim_thres
 
-        self.map_class_naive = Map()
-
-        self.map_class_profile = Map_Profile(dbname)
-        if sflg:
-            self.map_class_profile.loading_index()
-
+        self.map_class_profile = Map_Profile()
 
     def load_index(self):
         if self.map_class_profile:
@@ -40,16 +35,15 @@ class SchemaMapping:
 
     def mapping_naive(self, tableA, tableB, mapped={}):
 
-
         Mpair = mapped
         MpairR = {}
         for i in Mpair.keys():
             MpairR[Mpair[i]] = i
 
-        matching = self.map_class_naive.mapping(tableA, tableB, Mpair, MpairR)
+        matching = self.mapping(tableA, tableB, Mpair, MpairR)
 
         for i in range(len(matching)):
-            if matching[i][2] < self.thres:
+            if matching[i][2] < self.sim_thres:
                 break
             else:
                 if matching[i][0] not in Mpair and matching[i][1] not in MpairR:
@@ -466,12 +460,9 @@ class SchemaMapping:
 
         return group_list
 
-
-
-    def mapping_to_columns_index2(self, tableA, tableAname, dbname, thres):
+    def mapping_to_columns_index2(self, tableA, tableAname, thres):
 
         tableA = tableA.head(1000)
-        logging.info(tableA.head(3))
 
         mapped_pairs = self.map_class_profile.compute_candidate_pairs_index(tableA, thres)
 
@@ -529,8 +520,11 @@ class SchemaMapping:
         return_mapps = {}
         return_mapps_cached = {}
 
+
         for mkey in return_mapp_keys.keys():
-            return_mapps[mkey] = self.map_class_profile.bigtable_table[return_mapp_keys[mkey]]
+            if return_mapp_keys[mkey] in self.map_class_profile.bigtable_table:
+                return_mapps[mkey] = self.map_class_profile.bigtable_table[return_mapp_keys[mkey]]
+
 
         for mkey in return_mapp_keys.keys():
             return_mapps_cached[mkey] = return_mapp_keys[mkey]
@@ -554,6 +548,8 @@ class SchemaMapping:
                     schema_map_partial[pt[0][6:]] = {}
                 schema_map_partial[pt[0][6:]][pkey] = pt[1]
 
+        print(table_group)
+        print(query_name)
         connected_groups = []
         connected_groups.append(table_group[query_name[6:]])
 
@@ -587,7 +583,6 @@ class SchemaMapping:
 
         return schema_map_partial
 
-
     def mapping_to_columns_keys_search(self, tableA, thres, num = 1):
 
         mapping, mapping_cached = self.mapping_to_columns_search(tableA, thres)
@@ -611,8 +606,6 @@ class SchemaMapping:
             return mapping, return_key, mapping_cached
 
     #def mapping_to_columns_keys_search_incremental(self, tableA, thres, pre_mapping = {}, num = 1):
-
-
 
 
     def detect_key_constraints(self, tableA_name, tableB_name, mapping, mapping2c, candidate_keys, tableA, tableB,

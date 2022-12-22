@@ -1,7 +1,6 @@
-from sqlalchemy import create_engine
 import re
 import copy
-import data_extension.config as cfg
+from juneau.config import config
 
 
 class KS:
@@ -12,7 +11,7 @@ class KS:
     # schema, table, col specify the column to query
     # corpus is the name of the schema to query over
     # t is the threshold value
-    def query_col(self, schema, table, col, corpus=cfg.corpus, t=0.7):
+    def query_col(self, schema, table, col, corpus=config.ks.corpus, t=0.5):
         similar_tables_ls = []
 
         with self.psql_engine.begin() as connection:

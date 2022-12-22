@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 @import url("https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.css")
+=======
+@import url("https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.css");
+>>>>>>> master
 
 .dataset_inspector {
   max-height: 500px;
